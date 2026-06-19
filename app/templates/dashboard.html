@@ -1,0 +1,984 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard — DocuChunk</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; }
+
+    :root {
+      --bg:         #04070f;
+      --bg-1:       #070c18;
+      --bg-2:       #0c1220;
+      --bg-card:    #0f1826;
+      --bg-hover:   #131e2e;
+      --b:          rgba(30,90,180,0.22);
+      --b-hi:       rgba(0,170,255,0.4);
+      --cyan:       #00C8FF;
+      --cyan-dim:   rgba(0,200,255,0.09);
+      --cyan-glow:  rgba(0,200,255,0.18);
+      --blue:       #0055FF;
+      --text:       #D8E8FF;
+      --text2:      #6888AA;
+      --text3:      #2A4060;
+      --r:          10px;
+      --rl:         16px;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      -webkit-font-smoothing: antialiased;
+      display: flex;
+      min-height: 100vh;
+    }
+
+    /* ═══════════════════ SIDEBAR ═══════════════════ */
+    .sidebar {
+      width: 230px;
+      flex-shrink: 0;
+      background: var(--bg-1);
+      border-right: 1px solid var(--b);
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      padding: 22px 12px 20px;
+    }
+
+    .sb-logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 4px 8px 20px;
+      border-bottom: 1px solid var(--b);
+      margin-bottom: 16px;
+    }
+    .sb-logo-box {
+      width: 34px; height: 34px;
+      background: linear-gradient(135deg, #0044DD, #00C8FF);
+      border-radius: 9px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 15px; font-weight: 900; color: #fff;
+      box-shadow: 0 0 18px rgba(0,120,255,0.45);
+      flex-shrink: 0;
+    }
+    .sb-logo-name {
+      font-size: 1.05rem; font-weight: 800;
+      background: linear-gradient(90deg, #00C8FF, #88EEFF);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .sb-section {
+      font-size: 0.63rem;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--text3);
+      padding: 12px 10px 6px;
+    }
+
+    .sb-item {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      padding: 8px 10px;
+      border-radius: 8px;
+      font-size: 0.82rem;
+      font-weight: 500;
+      color: var(--text2);
+      cursor: pointer;
+      transition: all 0.18s;
+      border: 1px solid transparent;
+      text-decoration: none;
+    }
+    .sb-item:hover {
+      color: var(--cyan);
+      background: var(--cyan-dim);
+      border-color: rgba(0,200,255,0.15);
+    }
+    .sb-item.active {
+      color: var(--cyan);
+      background: var(--cyan-dim);
+      border-color: rgba(0,200,255,0.25);
+      box-shadow: inset 0 0 12px rgba(0,200,255,0.04);
+    }
+    .sb-item svg { width: 15px; height: 15px; flex-shrink: 0; opacity: 0.8; }
+    .sb-item.active svg { opacity: 1; }
+
+    .sb-fill { flex: 1; }
+
+    .sb-bottom {
+      border-top: 1px solid var(--b);
+      padding-top: 14px;
+      margin-top: 14px;
+    }
+    .sb-user-card {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      padding: 10px;
+      background: var(--bg-2);
+      border: 1px solid var(--b);
+      border-radius: 10px;
+      margin-bottom: 6px;
+    }
+    .sb-avatar {
+      width: 32px; height: 32px;
+      background: linear-gradient(135deg, #0044DD, #00C8FF);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.82rem; font-weight: 700; color: #fff;
+      flex-shrink: 0;
+      box-shadow: 0 0 10px rgba(0,120,255,0.35);
+    }
+    .sb-user-info { min-width: 0; }
+    .sb-user-name  { font-size: 0.8rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .sb-user-email { font-size: 0.7rem; color: var(--text3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .sb-logout {
+      display: flex; align-items: center; gap: 9px;
+      padding: 8px 10px;
+      border-radius: 8px;
+      font-size: 0.78rem; color: var(--text2);
+      cursor: pointer;
+      transition: all 0.18s;
+    }
+    .sb-logout svg { width: 14px; height: 14px; }
+    .sb-logout:hover { color: #f87171; background: rgba(248,113,113,0.07); }
+
+    /* ═══════════════════ MAIN ═══════════════════ */
+    .main {
+      flex: 1;
+      min-width: 0;
+      padding: 36px 44px;
+      overflow-x: hidden;
+    }
+
+    /* Page header */
+    .ph {
+      margin-bottom: 32px;
+    }
+    .ph-title {
+      font-size: 1.55rem;
+      font-weight: 800;
+      letter-spacing: -0.025em;
+      margin-bottom: 5px;
+    }
+    .ph-sub {
+      font-size: 0.83rem;
+      color: var(--text2);
+    }
+
+    /* ── Stats row ── */
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+      margin-bottom: 28px;
+    }
+    .stat {
+      background: var(--bg-card);
+      border: 1px solid var(--b);
+      border-radius: var(--rl);
+      padding: 18px 20px 16px;
+      position: relative;
+      overflow: hidden;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .stat::after {
+      content: '';
+      position: absolute;
+      top: 0; left: 16px; right: 16px;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--cyan), transparent);
+      opacity: 0.35;
+    }
+    .stat:hover {
+      border-color: var(--b-hi);
+      box-shadow: 0 0 24px var(--cyan-glow);
+    }
+    .stat-label {
+      font-size: 0.68rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text2);
+      margin-bottom: 10px;
+    }
+    .stat-num {
+      font-size: 2rem;
+      font-weight: 800;
+      line-height: 1;
+      color: var(--text);
+      font-variant-numeric: tabular-nums;
+    }
+    .stat-ico {
+      position: absolute;
+      right: 18px; top: 16px;
+      font-size: 1.25rem;
+      opacity: 0.12;
+    }
+
+    /* ── Upload zone ── */
+    .upzone {
+      border: 2px dashed var(--b);
+      border-radius: var(--rl);
+      padding: 44px 32px;
+      text-align: center;
+      background: var(--bg-1);
+      cursor: pointer;
+      transition: all 0.22s;
+      margin-bottom: 28px;
+      position: relative;
+      overflow: hidden;
+    }
+    .upzone::before {
+      content: '';
+      position: absolute; inset: 0;
+      background: radial-gradient(ellipse at 50% 50%, rgba(0,200,255,0.05) 0%, transparent 70%);
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    .upzone:hover,
+    .upzone.over {
+      border-color: var(--cyan);
+      box-shadow: 0 0 50px rgba(0,200,255,0.12), inset 0 0 30px rgba(0,200,255,0.04);
+    }
+    .upzone:hover::before, .upzone.over::before { opacity: 1; }
+
+    .up-icon {
+      width: 58px; height: 58px;
+      margin: 0 auto 18px;
+      background: var(--cyan-dim);
+      border: 1px solid rgba(0,200,255,0.25);
+      border-radius: 14px;
+      display: flex; align-items: center; justify-content: center;
+      position: relative; z-index: 1;
+    }
+    .up-icon svg { width: 26px; height: 26px; color: var(--cyan); }
+    .up-title { font-size: 0.97rem; font-weight: 700; margin-bottom: 5px; position: relative; z-index: 1; }
+    .up-sub   { font-size: 0.8rem; color: var(--text2); position: relative; z-index: 1; }
+    .up-tags  {
+      display: flex; gap: 8px; justify-content: center;
+      margin-top: 16px; position: relative; z-index: 1;
+    }
+    .up-tag {
+      padding: 3px 11px;
+      background: var(--bg-2);
+      border: 1px solid var(--b);
+      border-radius: 100px;
+      font-size: 0.7rem; font-weight: 700;
+      color: var(--cyan);
+      font-family: 'JetBrains Mono', monospace;
+      letter-spacing: 0.02em;
+    }
+    #fileInput { display: none; }
+
+    /* ── Section header ── */
+    .sh {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+    .sh-left {
+      display: flex; align-items: center; gap: 10px;
+    }
+    .sh h2 { font-size: 0.92rem; font-weight: 700; }
+    .sh-count {
+      font-size: 0.7rem; font-weight: 700;
+      background: var(--cyan-dim);
+      color: var(--cyan);
+      border: 1px solid rgba(0,200,255,0.2);
+      border-radius: 100px;
+      padding: 2px 9px;
+    }
+    .sh-btn {
+      font-size: 0.77rem; font-weight: 600;
+      color: var(--text2);
+      cursor: pointer;
+      padding: 6px 14px;
+      border-radius: 8px;
+      border: 1px solid var(--b);
+      background: transparent;
+      transition: all 0.18s;
+    }
+    .sh-btn:hover { color: var(--cyan); border-color: var(--b-hi); }
+
+    /* ── Table wrapper ── */
+    .tbl-wrap {
+      background: var(--bg-card);
+      border: 1px solid var(--b);
+      border-radius: var(--rl);
+      overflow: hidden;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    thead th {
+      text-align: left;
+      padding: 11px 16px;
+      font-size: 0.67rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text3);
+      background: var(--bg-2);
+      border-bottom: 1px solid var(--b);
+      white-space: nowrap;
+    }
+    tbody td {
+      padding: 13px 16px;
+      font-size: 0.82rem;
+      border-bottom: 1px solid rgba(30,90,180,0.1);
+      vertical-align: middle;
+    }
+    tbody tr:last-child td { border-bottom: none; }
+    tbody tr:hover td { background: var(--bg-hover); }
+
+    .td-file { display: flex; align-items: center; gap: 8px; }
+    .td-fname {
+      font-weight: 600;
+      max-width: 220px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .td-ext {
+      font-size: 0.65rem; font-weight: 700;
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--cyan);
+      background: var(--cyan-dim);
+      border: 1px solid rgba(0,200,255,0.2);
+      border-radius: 4px;
+      padding: 1px 5px;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .mono {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.77rem;
+      color: var(--text2);
+    }
+
+    /* pills */
+    .pill {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 3px 9px;
+      border-radius: 100px;
+      font-size: 0.67rem; font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+    .pill-dot {
+      width: 5px; height: 5px;
+      border-radius: 50%;
+      background: currentColor;
+      flex-shrink: 0;
+    }
+    .p-ready     { background: rgba(34,197,94,0.1);   color: #4ade80;  border: 1px solid rgba(34,197,94,0.2); }
+    .p-uploaded  { background: rgba(96,165,250,0.1);  color: #60a5fa;  border: 1px solid rgba(96,165,250,0.2); }
+    .p-parsing   { background: rgba(251,191,36,0.1);  color: #fbbf24;  border: 1px solid rgba(251,191,36,0.2); }
+    .p-chunking  { background: rgba(192,132,252,0.1); color: #c084fc;  border: 1px solid rgba(192,132,252,0.2); }
+    .p-embedding { background: rgba(244,114,182,0.1); color: #f472b6;  border: 1px solid rgba(244,114,182,0.2); }
+    .p-failed    { background: rgba(248,113,113,0.1); color: #f87171;  border: 1px solid rgba(248,113,113,0.2); }
+
+    .p-parsing .pill-dot,
+    .p-chunking .pill-dot,
+    .p-embedding .pill-dot { animation: blink 1.1s ease-in-out infinite; }
+    @keyframes blink { 0%,100% { opacity:1; } 50% { opacity:0.25; } }
+
+    /* action button */
+    .abtn {
+      padding: 4px 11px;
+      border-radius: 6px;
+      font-size: 0.73rem; font-weight: 600;
+      cursor: pointer;
+      border: 1px solid var(--b);
+      background: transparent;
+      color: var(--text2);
+      transition: all 0.18s;
+    }
+    .abtn:hover        { color: var(--cyan);  border-color: var(--b-hi); }
+    .abtn.del:hover    { color: #f87171; border-color: rgba(248,113,113,0.3); background: rgba(248,113,113,0.06); }
+
+    /* ── Empty state ── */
+    .empty {
+      padding: 72px 24px;
+      text-align: center;
+    }
+    .empty-icon {
+      width: 64px; height: 64px;
+      margin: 0 auto 18px;
+      background: var(--cyan-dim);
+      border: 1px solid var(--b);
+      border-radius: 16px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .empty-icon svg { width: 28px; height: 28px; color: var(--text3); }
+    .empty-h { font-size: 0.95rem; font-weight: 600; color: var(--text2); margin-bottom: 6px; }
+    .empty-p { font-size: 0.8rem; color: var(--text3); }
+
+    /* ── Toast ── */
+    .toast {
+      position: fixed;
+      bottom: 26px; right: 26px;
+      background: var(--bg-card);
+      border: 1px solid var(--b-hi);
+      border-radius: var(--rl);
+      padding: 16px 20px 14px;
+      min-width: 290px; max-width: 360px;
+      box-shadow: 0 8px 36px rgba(0,0,0,0.7), 0 0 40px rgba(0,200,255,0.1);
+      z-index: 999;
+      display: none;
+    }
+    .toast.show { display: block; animation: tin .28s ease; }
+    @keyframes tin { from { transform: translateX(16px); opacity:0; } to { transform: translateX(0); opacity:1; } }
+
+    .toast-top  { display: flex; align-items: center; gap: 9px; margin-bottom: 3px; }
+    .t-dot      { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+    .t-title    { font-size: 0.86rem; font-weight: 700; }
+    .t-sub      { font-size: 0.77rem; color: var(--text2); padding-left: 16px; margin-bottom: 10px; }
+    .t-bar      { height: 2px; background: var(--bg-2); border-radius: 100px; overflow: hidden; }
+    .t-fill     { height: 100%; border-radius: 100px; transition: width .4s ease; }
+
+    /* ── Scrollbar ── */
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--b); border-radius: 100px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(0,200,255,0.3); }
+
+    /* ══════════════ MOBILE NAV BAR ══════════════ */
+    .mob-nav {
+      display: none;
+      position: fixed; top: 0; left: 0; right: 0;
+      height: 56px;
+      background: var(--bg-1);
+      border-bottom: 1px solid var(--b);
+      padding: 0 14px;
+      align-items: center;
+      gap: 12px;
+      z-index: 100;
+      box-shadow: 0 2px 20px rgba(0,0,0,0.4);
+    }
+    .mob-logo {
+      display: flex; align-items: center; gap: 8px;
+      flex: 1;
+    }
+    .mob-avatar {
+      width: 32px; height: 32px; flex-shrink: 0;
+      background: linear-gradient(135deg, #0044DD, #00C8FF);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.82rem; font-weight: 700; color: #fff;
+      box-shadow: 0 0 10px rgba(0,120,255,0.35);
+    }
+
+    /* ── Hamburger ── */
+    .hamburger {
+      display: flex; flex-direction: column;
+      gap: 5px; padding: 7px;
+      background: none; border: 1px solid var(--b);
+      border-radius: 8px; cursor: pointer;
+      flex-shrink: 0;
+      transition: border-color 0.18s;
+    }
+    .hamburger:hover { border-color: var(--b-hi); }
+    .hamburger span {
+      display: block; width: 18px; height: 2px;
+      background: var(--text2);
+      border-radius: 2px;
+      transition: all 0.22s ease;
+    }
+    .hamburger.open span:nth-child(1) { transform: rotate(45deg) translate(5px, 5px); background: var(--cyan); }
+    .hamburger.open span:nth-child(2) { opacity: 0; transform: scaleX(0); }
+    .hamburger.open span:nth-child(3) { transform: rotate(-45deg) translate(5px, -5px); background: var(--cyan); }
+
+    /* ── Drawer overlay ── */
+    .overlay {
+      display: none;
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.65);
+      z-index: 150;
+      backdrop-filter: blur(3px);
+      -webkit-backdrop-filter: blur(3px);
+    }
+    .overlay.show { display: block; }
+
+    /* ══════════════ RESPONSIVE ══════════════ */
+    @media (max-width: 1100px) {
+      .stats { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    @media (max-width: 768px) {
+      /* Show mobile topbar */
+      .mob-nav { display: flex; }
+
+      /* Push content below topbar */
+      .main { padding: 80px 16px 24px; }
+
+      /* Sidebar becomes slide-in drawer */
+      .sidebar {
+        position: fixed;
+        top: 0; left: 0; bottom: 0;
+        z-index: 200;
+        width: 260px;
+        height: 100vh;
+        transform: translateX(-100%);
+        transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: 4px 0 40px rgba(0,0,0,0.7);
+      }
+      .sidebar.open { transform: translateX(0); }
+
+      /* Stats */
+      .stats { grid-template-columns: repeat(2, 1fr); }
+
+      /* Table: horizontal scroll */
+      .tbl-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+      table     { min-width: 540px; }
+
+      /* Toast: full width */
+      .toast { left: 12px; right: 12px; min-width: 0; max-width: none; bottom: 16px; }
+
+      /* Upload zone */
+      .upzone { padding: 32px 20px; }
+    }
+
+    @media (max-width: 480px) {
+      /* Stats: single column */
+      .stats { grid-template-columns: 1fr; gap: 10px; }
+
+      /* Page header */
+      .ph-title { font-size: 1.25rem; }
+      .ph { margin-bottom: 20px; }
+
+      /* Upload compact */
+      .upzone { padding: 24px 16px; }
+      .up-icon { width: 46px; height: 46px; margin-bottom: 12px; }
+      .up-icon svg { width: 20px; height: 20px; }
+
+      /* Hide Pages + Uploaded columns on small screens */
+      thead th:nth-child(3),
+      thead th:nth-child(6),
+      tbody td:nth-child(3),
+      tbody td:nth-child(6) { display: none; }
+
+      /* Filename max-width */
+      .td-fname { max-width: 130px; }
+
+      /* Stat number smaller */
+      .stat-num { font-size: 1.6rem; }
+    }
+
+    @media (max-width: 360px) {
+      /* Also hide Chunks column on very small */
+      thead th:nth-child(4),
+      tbody td:nth-child(4) { display: none; }
+      .td-fname { max-width: 100px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ═════════════ MOBILE TOP NAV ═════════════ -->
+<nav class="mob-nav">
+  <button class="hamburger" id="hamburger" aria-label="Toggle menu">
+    <span></span><span></span><span></span>
+  </button>
+  <div class="mob-logo">
+    <div class="sb-logo-box">D</div>
+    <span class="sb-logo-name">DocuChunk</span>
+  </div>
+  <div class="mob-avatar" id="mobAvatar">?</div>
+</nav>
+
+<!-- Drawer overlay -->
+<div class="overlay" id="overlay"></div>
+
+<!-- ═════════════ SIDEBAR ═════════════ -->
+<aside class="sidebar" id="sidebar">
+  <div class="sb-logo">
+    <div class="sb-logo-box">D</div>
+    <span class="sb-logo-name">DocuChunk</span>
+  </div>
+
+  <div class="sb-section">Workspace</div>
+  <div class="sb-item active">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+      <polyline points="14 2 14 8 20 8"/>
+    </svg>
+    Documents
+  </div>
+  <div class="sb-item" id="sb-search">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+    </svg>
+    Semantic Search
+  </div>
+
+  <div class="sb-section">Analysis</div>
+  <div class="sb-item">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+    </svg>
+    Chunk Analyser
+  </div>
+  <div class="sb-item">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <circle cx="12" cy="12" r="3"/>
+      <path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/>
+    </svg>
+    Embeddings
+  </div>
+  <div class="sb-item">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <rect x="2" y="2" width="9" height="9" rx="1"/><rect x="13" y="2" width="9" height="9" rx="1"/>
+      <rect x="2" y="13" width="9" height="9" rx="1"/><rect x="13" y="13" width="9" height="9" rx="1"/>
+    </svg>
+    Visualise (UMAP)
+  </div>
+
+  <div class="sb-section">Developer</div>
+  <a class="sb-item" href="/api/docs" target="_blank">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>
+    </svg>
+    API Docs
+  </a>
+
+  <div class="sb-fill"></div>
+
+  <div class="sb-bottom">
+    <div class="sb-user-card">
+      <div class="sb-avatar" id="userAvatar">?</div>
+      <div class="sb-user-info">
+        <div class="sb-user-name"  id="userName">Loading…</div>
+        <div class="sb-user-email" id="userEmail"></div>
+      </div>
+    </div>
+    <div class="sb-logout" id="logoutBtn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+        <polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
+      </svg>
+      Sign Out
+    </div>
+  </div>
+</aside>
+
+<!-- ═════════════ MAIN ═════════════ -->
+<main class="main">
+
+  <div class="ph">
+    <h1 class="ph-title">My Documents</h1>
+    <p class="ph-sub">Upload PDF or DOCX — automatically parsed, chunked &amp; embedded.</p>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats">
+    <div class="stat">
+      <div class="stat-label">Total Documents</div>
+      <div class="stat-num" id="s-docs">—</div>
+      <div class="stat-ico">📄</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Total Chunks</div>
+      <div class="stat-num" id="s-chunks">—</div>
+      <div class="stat-ico">🧩</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Ready</div>
+      <div class="stat-num" id="s-ready">—</div>
+      <div class="stat-ico">✅</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Processing</div>
+      <div class="stat-num" id="s-proc">—</div>
+      <div class="stat-ico">⚙️</div>
+    </div>
+  </div>
+
+  <!-- Upload -->
+  <div class="upzone" id="upzone">
+    <input type="file" id="fileInput" accept=".pdf,.docx" />
+    <div class="up-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polyline points="16 16 12 12 8 16"/>
+        <line x1="12" y1="12" x2="12" y2="21"/>
+        <path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/>
+      </svg>
+    </div>
+    <div class="up-title">Drop your document here</div>
+    <p class="up-sub">or click to browse — PDF and DOCX supported</p>
+    <div class="up-tags">
+      <span class="up-tag">.pdf</span>
+      <span class="up-tag">.docx</span>
+      <span class="up-tag">max 20 MB</span>
+    </div>
+  </div>
+
+  <!-- Doc list -->
+  <div class="sh">
+    <div class="sh-left">
+      <h2>Uploaded Documents</h2>
+      <span class="sh-count" id="doc-count">0</span>
+    </div>
+    <button class="sh-btn" onclick="loadDocs()">↻ Refresh</button>
+  </div>
+
+  <div class="tbl-wrap" id="docsWrap">
+    <div class="empty">
+      <div class="empty-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+          <polyline points="14 2 14 8 20 8"/>
+        </svg>
+      </div>
+      <div class="empty-h">No documents yet</div>
+      <div class="empty-p">Upload your first PDF or DOCX to get started.</div>
+    </div>
+  </div>
+
+</main>
+
+<!-- Toast -->
+<div class="toast" id="toast">
+  <div class="toast-top">
+    <div class="t-dot" id="tdot"></div>
+    <div class="t-title" id="ttitle"></div>
+  </div>
+  <div class="t-sub" id="tsub"></div>
+  <div class="t-bar"><div class="t-fill" id="tfill"></div></div>
+</div>
+
+<script>
+/* ── Auth ── */
+const token = localStorage.getItem('access_token');
+if (!token) { window.location.href = '/login'; }
+
+function apiFetch(path, opts = {}) {
+  const isFormData = opts.body instanceof FormData;
+  return fetch(path, {
+    ...opts,
+    headers: {
+      'Authorization': 'Bearer ' + token,
+      ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
+      ...(opts.headers || {}),
+    },
+  });
+}
+
+/* ── User info ── */
+apiFetch('/auth/me')
+  .then(r => { if (!r.ok) throw new Error(); return r.json(); })
+  .then(u => {
+    const initial = (u.full_name || u.email || '?')[0].toUpperCase();
+    document.getElementById('userAvatar').textContent = initial;
+    document.getElementById('mobAvatar').textContent  = initial;
+    document.getElementById('userName').textContent   = u.full_name || u.email;
+    document.getElementById('userEmail').textContent  = u.email;
+  })
+  .catch(() => { window.location.href = '/login'; });
+
+/* ── Helpers ── */
+const pillClass = s => ({ ready:'p-ready', uploaded:'p-uploaded', parsing:'p-parsing', chunking:'p-chunking', embedding:'p-embedding', failed:'p-failed' }[s] || 'p-uploaded');
+const fmtSize   = b => b >= 1048576 ? (b/1048576).toFixed(1)+' MB' : Math.ceil(b/1024)+' KB';
+const fmtDate   = d => new Date(d).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' });
+const ext       = f => { const p = f.split('.'); return p.length > 1 ? p.pop().toUpperCase() : ''; };
+
+/* ── Load docs ── */
+async function loadDocs() {
+  try {
+    const res   = await apiFetch('/docs/list?page_size=100');
+    if (!res.ok) return;
+    const data  = await res.json();
+    const items = data.items || [];
+
+    document.getElementById('doc-count').textContent = items.length;
+    document.getElementById('s-docs').textContent    = items.length;
+    document.getElementById('s-chunks').textContent  = items.reduce((a, d) => a + (d.chunk_count || 0), 0);
+    document.getElementById('s-ready').textContent   = items.filter(d => d.status === 'ready').length;
+    document.getElementById('s-proc').textContent    = items.filter(d => ['parsing','chunking','embedding'].includes(d.status)).length;
+
+    const wrap = document.getElementById('docsWrap');
+
+    if (!items.length) {
+      wrap.innerHTML = `
+        <div class="empty">
+          <div class="empty-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+              <polyline points="14 2 14 8 20 8"/>
+            </svg>
+          </div>
+          <div class="empty-h">No documents yet</div>
+          <div class="empty-p">Upload your first PDF or DOCX to get started.</div>
+        </div>`;
+      return;
+    }
+
+    wrap.innerHTML = `
+      <table>
+        <thead>
+          <tr>
+            <th>File</th>
+            <th>Size</th>
+            <th>Pages</th>
+            <th>Chunks</th>
+            <th>Status</th>
+            <th>Uploaded</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          ${items.map(d => `
+            <tr>
+              <td>
+                <div class="td-file">
+                  <span class="td-fname" title="${d.original_filename}">${d.original_filename}</span>
+                  <span class="td-ext">${ext(d.original_filename)}</span>
+                </div>
+              </td>
+              <td class="mono">${fmtSize(d.file_size)}</td>
+              <td class="mono">${d.page_count ?? '—'}</td>
+              <td class="mono">${d.chunk_count ?? '—'}</td>
+              <td>
+                <span class="pill ${pillClass(d.status)}">
+                  <span class="pill-dot"></span>${d.status}
+                </span>
+              </td>
+              <td class="mono">${fmtDate(d.created_at)}</td>
+              <td><button class="abtn del" onclick="deleteDoc('${d.id}')">Delete</button></td>
+            </tr>`).join('')}
+        </tbody>
+      </table>`;
+  } catch(e) {
+    console.error(e);
+  }
+}
+loadDocs();
+
+/* ── Toast ── */
+let hideTimer;
+function toast(title, sub, pct, color) {
+  const el = document.getElementById('toast');
+  const dot = document.getElementById('tdot');
+  const fill = document.getElementById('tfill');
+  document.getElementById('ttitle').textContent = title;
+  document.getElementById('tsub').textContent   = sub;
+  dot.style.background  = color;
+  dot.style.boxShadow   = `0 0 7px ${color}`;
+  fill.style.width      = pct + '%';
+  fill.style.background = `linear-gradient(90deg, #0044DD, ${color})`;
+  el.classList.add('show');
+  clearTimeout(hideTimer);
+}
+function hideToast(ms = 3500) {
+  hideTimer = setTimeout(() => document.getElementById('toast').classList.remove('show'), ms);
+}
+
+/* ── Upload ── */
+const zone  = document.getElementById('upzone');
+const input = document.getElementById('fileInput');
+zone.addEventListener('click',     () => input.click());
+zone.addEventListener('dragover',  e => { e.preventDefault(); zone.classList.add('over'); });
+zone.addEventListener('dragleave', () => zone.classList.remove('over'));
+zone.addEventListener('drop', e => {
+  e.preventDefault(); zone.classList.remove('over');
+  if (e.dataTransfer.files[0]) uploadFile(e.dataTransfer.files[0]);
+});
+input.addEventListener('change', () => { if (input.files[0]) uploadFile(input.files[0]); });
+
+async function uploadFile(file) {
+  toast(`Uploading ${file.name}`, fmtSize(file.size), 28, '#00C8FF');
+
+  const form = new FormData();
+  form.append('file', file);
+
+  try {
+    const res  = await fetch('/docs/upload', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + token },
+      body: form,
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || 'Upload failed');
+
+    toast('Upload complete', 'Pipeline is running in the background…', 100, '#4ade80');
+    hideToast();
+    loadDocs();
+    pollStatus(data.id);
+  } catch(ex) {
+    toast('Upload failed', ex.message, 0, '#f87171');
+    hideToast(5000);
+  }
+  input.value = '';
+}
+
+function pollStatus(id) {
+  const iv = setInterval(async () => {
+    const r = await apiFetch('/docs/' + id);
+    const d = await r.json();
+    loadDocs();
+    if (['ready','failed'].includes(d.status)) clearInterval(iv);
+  }, 2000);
+}
+
+async function deleteDoc(id) {
+  if (!confirm('Delete this document and all its chunks?')) return;
+  await apiFetch('/docs/' + id, { method: 'DELETE' });
+  loadDocs();
+}
+
+document.getElementById('logoutBtn').addEventListener('click', () => {
+  localStorage.clear(); window.location.href = '/';
+});
+
+document.getElementById('sb-search').addEventListener('click', () => {
+  toast('Coming soon', 'Semantic Search ships in Phase 8 ✨', 60, '#c084fc');
+  hideToast(3000);
+});
+
+/* ── Mobile drawer ── */
+const sidebar    = document.getElementById('sidebar');
+const hamburger  = document.getElementById('hamburger');
+const overlay    = document.getElementById('overlay');
+
+function openDrawer() {
+  sidebar.classList.add('open');
+  hamburger.classList.add('open');
+  overlay.classList.add('show');
+  document.body.style.overflow = 'hidden';
+}
+function closeDrawer() {
+  sidebar.classList.remove('open');
+  hamburger.classList.remove('open');
+  overlay.classList.remove('show');
+  document.body.style.overflow = '';
+}
+
+hamburger.addEventListener('click', () => sidebar.classList.contains('open') ? closeDrawer() : openDrawer());
+overlay.addEventListener('click', closeDrawer);
+
+// Close drawer when a nav item is tapped on mobile
+document.querySelectorAll('.sb-item, .sb-logout').forEach(el => {
+  el.addEventListener('click', () => { if (window.innerWidth <= 768) closeDrawer(); });
+});
+
+</script>
+</body>
+</html>

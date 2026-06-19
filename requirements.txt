@@ -1,0 +1,45 @@
+# Web framework
+fastapi>=0.111.0
+uvicorn[standard]>=0.30.0
+python-multipart>=0.0.9
+
+# Auth
+python-jose[cryptography]>=3.3.0
+bcrypt>=4.0.0                  # used directly; passlib compat issues with bcrypt 5.x
+itsdangerous>=2.0.0            # required by Starlette SessionMiddleware (OAuth state)
+authlib>=1.3.0
+httpx>=0.27.0
+email-validator>=2.0.0         # required by Pydantic EmailStr
+
+# Database
+sqlalchemy>=2.0.0
+alembic>=1.13.0
+
+# Config
+pydantic-settings>=2.0.0
+python-dotenv>=1.0.0
+
+# Document parsing
+pymupdf>=1.24.0
+python-docx>=1.1.0
+
+# NLP / chunking
+nltk>=3.8.0
+tiktoken>=0.7.0
+
+# Vector DB
+chromadb>=0.5.0
+
+# Embeddings / generation (HuggingFace free)
+numpy>=1.26.0
+
+# Visualisation (debug endpoints)
+umap-learn>=0.5.6
+matplotlib>=3.9.0
+
+# Templates
+jinja2>=3.1.0
+
+# Testing
+pytest>=8.0.0
+pytest-asyncio>=0.23.0

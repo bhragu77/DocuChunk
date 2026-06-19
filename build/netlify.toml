@@ -1,0 +1,15 @@
+[build]
+  publish = "."        # build/ folder is the publish root
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options        = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy        = "strict-origin-when-cross-origin"
+
+# SPA-style: any unknown path stays on index.html
+[[redirects]]
+  from   = "/*"
+  to     = "/index.html"
+  status = 200
