@@ -1,5 +1,5 @@
 [build]
-  publish = "."        # build/ folder is the publish root
+  publish = "build"
 
 [[headers]]
   for = "/*"
@@ -8,7 +8,6 @@
     X-Content-Type-Options = "nosniff"
     Referrer-Policy        = "strict-origin-when-cross-origin"
 
-# SPA-style: any unknown path stays on index.html
 [[redirects]]
   from   = "/*"
   to     = "/index.html"
