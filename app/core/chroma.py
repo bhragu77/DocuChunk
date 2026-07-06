@@ -27,6 +27,24 @@ logger = logging.getLogger(__name__)
 COSINE_SPACE = {"hnsw:space": "cosine"}
 
 
+def _collection_metadata() -> dict:
+    """
+    Collection metadata = cosine space + HNSW tuning knobs from config.
+
+    These are set ONCE at collection creation and are immutable for the life of
+    the collection, so changing hnsw_m / hnsw_construction_ef only affects NEW
+    collections (delete & re-ingest to rebuild an existing one). hnsw_search_ef is
+    the query-time recall/latency dial. See config.py for the trade-offs.
+    """
+    s = get_settings()
+    return {
+        **COSINE_SPACE,
+        "hnsw:M": s.hnsw_m,
+        "hnsw:construction_ef": s.hnsw_construction_ef,
+        "hnsw:search_ef": s.hnsw_search_ef,
+    }
+
+
 def build_chroma_client() -> "chromadb.ClientAPI":
     """
     Construct the ChromaDB client from CHROMA_MODE alone. Called once at app
@@ -54,6 +72,7 @@ def get_or_create_collection(client: "chromadb.ClientAPI", name: str):
     The single collection-creation site. ALWAYS cosine space.
 
     Phase 7's vector store must route every collection it touches through here so
-    that document vectors and Phase 8 query vectors share the same distance metric.
+    that document vectors and Phase 8 query vectors share the same distance metric
+    and HNSW tuning.
     """
-    return client.get_or_create_collection(name=name, metadata=COSINE_SPACE)
+    return client.get_or_create_collection(name=name, metadata=_collection_metadata())

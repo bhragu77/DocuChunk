@@ -34,6 +34,7 @@ from typing import Literal
 import nltk
 
 from app.config import get_settings
+from app.pipeline.tokenization import count_tokens, split_by_tokens
 from app.pipeline.types import Chunk, CleanedPage
 
 logger = logging.getLogger(__name__)
@@ -387,6 +388,22 @@ def chunk_document(
     # Drop any empty-string chunks that slipped through
     raw = [(t, s, e) for t, s, e in raw if t.strip()]
 
+    # ── Token guard ───────────────────────────────────────────────────────────
+    # The character-based strategies above do not bound TOKENS, but the embedding
+    # model truncates inputs over embed_max_tokens (256 for all-MiniLM-L6-v2).
+    # Split any over-budget chunk into token-bounded sub-chunks, rebasing the
+    # sub-offsets onto the joined-document offsets so char_start/char_end (and thus
+    # chunk identity + provenance) stay exact. Chunks already within budget pass
+    # through untouched (one cheap token count each).
+    settings = get_settings()
+    max_tokens = settings.embed_max_tokens
+    overlap_tokens = settings.embed_overlap_tokens
+    bounded: list[tuple[str, int, int]] = []
+    for t, s, e in raw:
+        for sub_t, sub_s, sub_e in split_by_tokens(t, max_tokens, overlap_tokens):
+            bounded.append((sub_t, s + sub_s, s + sub_e))
+    raw = bounded
+
     source = pages[0].source if pages else ""
     chunks: list[Chunk] = []
 
@@ -416,7 +433,7 @@ def chunk_document(
             page_number=page_number,
             char_start=start,
             char_end=end,
-            token_count=len(chunk_text) // 4,   # rough estimate; Phase 6 replaces with tiktoken
+            token_count=count_tokens(chunk_text),   # exact model token count (see tokenization.py)
             content_hash=make_content_hash(chunk_text),
             doc_version=doc_version,
             metadata=meta,

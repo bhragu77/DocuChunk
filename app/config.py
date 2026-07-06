@@ -33,6 +33,15 @@ class Settings(BaseSettings):
     # Http-mode target (only used when chroma_mode == "http").
     chroma_host: str = "localhost"
     chroma_port: int = 8000
+    # HNSW index tuning (applied at collection creation — see app/core/chroma.py).
+    #   m                → bi-directional links per node. ↑ recall + memory, slower build.
+    #   construction_ef  → candidate list size while BUILDING. ↑ graph quality, slower ingest.
+    #   search_ef        → candidate list size while QUERYING. THE recall⇄latency dial:
+    #                      ↑ = higher recall (fewer missed chunks), slower query.
+    # Defaults raise search_ef well above Chroma's default (10) for better recall.
+    hnsw_m: int = 16
+    hnsw_construction_ef: int = 200
+    hnsw_search_ef: int = 100
     # Max ids per single Chroma upsert. Chroma caps how many records one upsert call
     # may carry; the batch-upsert sink (Part 2) splits any sink batch larger than this
     # into multiple upsert calls. Keep comfortably under Chroma's own limit.
@@ -52,6 +61,12 @@ class Settings(BaseSettings):
     embed_large_min: int = 1000        # >= this many chunks → LARGE tier
     embed_batch_size: int = 32         # chunks per embedding batch
     embed_batch_delay_s: float = 0.5   # inter-batch delay — hf_api ONLY (not local)
+    # Token budget of the embedding model. all-MiniLM-L6-v2 truncates inputs over
+    # 256 tokens, so the chunker splits any chunk exceeding this into token-bounded
+    # sub-chunks (see app/pipeline/tokenization.py). Lower this if you swap to a
+    # model with a smaller window; raise it (e.g. 512) for a longer-context model.
+    embed_max_tokens: int = 256
+    embed_overlap_tokens: int = 32     # token overlap when a chunk must be split
 
     # Google OAuth
     google_client_id: str = ""
