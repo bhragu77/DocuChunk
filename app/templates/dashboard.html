@@ -432,6 +432,44 @@
     .empty-h { font-size: 0.95rem; font-weight: 600; color: var(--text2); margin-bottom: 6px; }
     .empty-p { font-size: 0.8rem; color: var(--text3); }
 
+    /* ── Semantic Search view ── */
+    .search-bar { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 22px; }
+    .search-input {
+      flex: 1 1 320px; min-width: 200px;
+      padding: 12px 15px; border-radius: var(--r);
+      border: 1px solid var(--b); background: var(--bg-card); color: var(--text);
+      font-size: 0.9rem; outline: none; transition: border-color .15s;
+    }
+    .search-input:focus { border-color: var(--b-hi); }
+    .search-input::placeholder { color: var(--text3); }
+    .search-select {
+      padding: 12px 14px; border-radius: var(--r);
+      border: 1px solid var(--b); background: var(--bg-card); color: var(--text2);
+      font-size: 0.82rem; outline: none; cursor: pointer;
+    }
+    .search-go { padding: 12px 24px; }
+    .search-go:disabled { opacity: .5; cursor: not-allowed; }
+    .res-count { font-size: 0.8rem; color: var(--text2); margin-bottom: 14px; }
+    .res-card {
+      background: var(--bg-card); border: 1px solid var(--b);
+      border-radius: var(--rl); padding: 16px 18px; margin-bottom: 12px;
+      transition: border-color .15s;
+    }
+    .res-card:hover { border-color: var(--b-hi); }
+    .res-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
+    .res-meta { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+    .res-rank { font-family: ui-monospace, monospace; color: var(--text3); font-size: 0.8rem; }
+    .res-src  { font-weight: 600; color: var(--text); font-size: 0.86rem; }
+    .res-page { font-size: 0.75rem; color: var(--text2); background: var(--cyan-dim); border: 1px solid var(--b); padding: 2px 9px; border-radius: 999px; }
+    .res-score { font-family: ui-monospace, monospace; font-size: 0.78rem; color: var(--cyan); }
+    .res-text { font-size: 0.86rem; line-height: 1.65; color: var(--text2); white-space: pre-wrap; word-break: break-word; }
+    .search-spin {
+      width: 30px; height: 30px; margin: 0 auto 16px;
+      border: 3px solid var(--b); border-top-color: var(--cyan);
+      border-radius: 50%; animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
     /* ── Toast ── */
     .toast {
       position: fixed;
@@ -616,7 +654,7 @@
   </div>
 
   <div class="sb-section">Workspace</div>
-  <div class="sb-item active">
+  <div class="sb-item active" id="sb-docs">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
       <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
       <polyline points="14 2 14 8 20 8"/>
@@ -631,20 +669,20 @@
   </div>
 
   <div class="sb-section">Analysis</div>
-  <div class="sb-item">
+  <div class="sb-item" id="sb-analyse">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
       <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
     </svg>
     Chunk Analyser
   </div>
-  <div class="sb-item">
+  <div class="sb-item" id="sb-embed">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
       <circle cx="12" cy="12" r="3"/>
       <path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/>
     </svg>
     Embeddings
   </div>
-  <div class="sb-item">
+  <div class="sb-item" id="sb-visualise">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
       <rect x="2" y="2" width="9" height="9" rx="1"/><rect x="13" y="2" width="9" height="9" rx="1"/>
       <rect x="2" y="13" width="9" height="9" rx="1"/><rect x="13" y="13" width="9" height="9" rx="1"/>
@@ -682,6 +720,8 @@
 
 <!-- ═════════════ MAIN ═════════════ -->
 <main class="main">
+
+  <div id="docsView">
 
   <div class="ph">
     <h1 class="ph-title">My Documents</h1>
@@ -752,6 +792,93 @@
       <div class="empty-p">Upload your first PDF or DOCX to get started.</div>
     </div>
   </div>
+
+  </div><!-- /#docsView -->
+
+  <!-- ── Semantic Search view (Phase 8) ── -->
+  <div id="searchView" style="display:none">
+
+    <div class="ph">
+      <h1 class="ph-title">Semantic Search</h1>
+      <p class="ph-sub">Hybrid semantic + keyword retrieval with cross-encoder reranking across your ingested documents.</p>
+    </div>
+
+    <div class="search-bar">
+      <input id="searchQuery" class="search-input" type="text" autocomplete="off"
+             placeholder="Search your documents… e.g. warranty period, error E-4521" />
+      <select id="searchDoc" class="search-select" title="Filter by document">
+        <option value="">All documents</option>
+      </select>
+      <select id="searchTopK" class="search-select" title="Number of results">
+        <option value="5">Top 5</option>
+        <option value="8" selected>Top 8</option>
+        <option value="10">Top 10</option>
+        <option value="20">Top 20</option>
+      </select>
+      <button id="searchBtn" class="sh-btn search-go">Search</button>
+    </div>
+
+    <div id="searchResults">
+      <div class="empty">
+        <div class="empty-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+        </div>
+        <div class="empty-h">Search your knowledge base</div>
+        <div class="empty-p">Type a query above and hit Search to retrieve the most relevant chunks.</div>
+      </div>
+    </div>
+
+  </div><!-- /#searchView -->
+
+  <!-- ═════════════ CHUNK ANALYSER ═════════════ -->
+  <div id="analyseView" style="display:none">
+    <div class="ph">
+      <h1 class="ph-title">Chunk Analyser</h1>
+      <p class="ph-sub">Chunk-quality statistics — size &amp; token distribution, overlap coverage and anomaly warnings — for any ingested document.</p>
+    </div>
+    <div class="search-bar">
+      <select id="analyseDoc" class="search-select" title="Pick a document">
+        <option value="">Select a document…</option>
+      </select>
+    </div>
+    <div id="analyseResults">
+      <div class="empty"><div class="empty-h">Pick a document</div><div class="empty-p">Choose a ready document above to see its chunk analysis.</div></div>
+    </div>
+  </div><!-- /#analyseView -->
+
+  <!-- ═════════════ EMBEDDINGS ═════════════ -->
+  <div id="embedView" style="display:none">
+    <div class="ph">
+      <h1 class="ph-title">Embeddings</h1>
+      <p class="ph-sub">Inspect the dense vectors stored in ChromaDB — dimensionality, L2 norm and leading components per chunk.</p>
+    </div>
+    <div class="search-bar">
+      <select id="embedDoc" class="search-select" title="Pick a document">
+        <option value="">Select a document…</option>
+      </select>
+    </div>
+    <div id="embedResults">
+      <div class="empty"><div class="empty-h">Pick a document</div><div class="empty-p">Choose a ready document above to inspect its embeddings.</div></div>
+    </div>
+  </div><!-- /#embedView -->
+
+  <!-- ═════════════ VISUALISE (UMAP) ═════════════ -->
+  <div id="vizView" style="display:none">
+    <div class="ph">
+      <h1 class="ph-title">Visualise <span style="opacity:.5;font-weight:500">(UMAP)</span></h1>
+      <p class="ph-sub">2-D projection of a document's chunk embeddings. Nearby points are semantically similar. Small documents fall back to PCA.</p>
+    </div>
+    <div class="search-bar">
+      <select id="vizDoc" class="search-select" title="Pick a document">
+        <option value="">Select a document…</option>
+      </select>
+    </div>
+    <div id="vizResults">
+      <div class="empty"><div class="empty-h">Pick a document</div><div class="empty-p">Choose a ready document above to plot its embedding space.</div></div>
+    </div>
+  </div><!-- /#vizView -->
 
 </main>
 
@@ -948,10 +1075,358 @@ document.getElementById('logoutBtn').addEventListener('click', () => {
   localStorage.clear(); window.location.href = '/';
 });
 
-document.getElementById('sb-search').addEventListener('click', () => {
-  toast('Coming soon', 'Semantic Search ships in Phase 8 ✨', 60, '#c084fc');
-  hideToast(3000);
+/* ── View switching (Documents · Search · Analyser · Embeddings · Visualise) ── */
+const VIEWS = {
+  docs:      { view: 'docsView',     nav: 'sb-docs' },
+  search:    { view: 'searchView',   nav: 'sb-search',    onShow: () => { populateSearchDocs(); document.getElementById('searchQuery').focus(); } },
+  analyse:   { view: 'analyseView',  nav: 'sb-analyse',   onShow: () => populateAnalysisDocs('analyseDoc') },
+  embed:     { view: 'embedView',    nav: 'sb-embed',     onShow: () => populateAnalysisDocs('embedDoc') },
+  visualise: { view: 'vizView',      nav: 'sb-visualise', onShow: () => populateAnalysisDocs('vizDoc') },
+};
+
+function showView(which) {
+  Object.entries(VIEWS).forEach(([key, cfg]) => {
+    const active = key === which;
+    document.getElementById(cfg.view).style.display = active ? 'block' : 'none';
+    document.getElementById(cfg.nav).classList.toggle('active', active);
+  });
+  VIEWS[which]?.onShow?.();
+}
+Object.entries(VIEWS).forEach(([key, cfg]) =>
+  document.getElementById(cfg.nav).addEventListener('click', () => showView(key)));
+
+/* Shared: fill an analysis doc-selector with the user's ready documents. */
+async function populateAnalysisDocs(selectId) {
+  const sel = document.getElementById(selectId);
+  if (!sel) return;
+  try {
+    const res = await apiFetch('/docs/list?page_size=100');
+    if (!res.ok) return;
+    const items = (await res.json()).items || [];
+    const current = sel.value;
+    sel.innerHTML = '<option value="">Select a document…</option>' +
+      items.filter(d => d.status === 'ready')
+           .map(d => `<option value="${d.id}">${escapeHtml(d.original_filename)}</option>`)
+           .join('');
+    sel.value = current;
+  } catch (e) { /* ignore */ }
+}
+
+/* ── Chunk Analyser ── */
+document.getElementById('analyseDoc').addEventListener('change', e => {
+  if (e.target.value) loadAnalysis(e.target.value);
 });
+async function loadAnalysis(docId) {
+  const box = document.getElementById('analyseResults');
+  box.innerHTML = `<div class="empty"><div class="search-spin"></div><div class="empty-h">Analysing…</div></div>`;
+  try {
+    const res = await apiFetch('/analysis/' + docId + '/chunks');
+    const d = await res.json();
+    if (!res.ok) throw new Error(d.detail || 'Failed');
+    const s = d.stats;
+    const dist = s.size_distribution || {};
+    const maxDist = Math.max(1, ...Object.values(dist));
+    const warnings = (s.warnings || []).length
+      ? `<div class="res-card" style="border-color:rgba(244,114,182,.35)"><b>⚠ Warnings</b><ul style="margin:6px 0 0 18px">${s.warnings.map(w=>`<li>${escapeHtml(w)}</li>`).join('')}</ul></div>`
+      : '';
+    box.innerHTML = `
+      <div class="stats">
+        ${statCard('Total Chunks', s.total_chunks)}
+        ${statCard('Avg Chars', s.avg_chars)}
+        ${statCard('Avg Tokens', s.avg_tokens)}
+        ${statCard('Overlap Coverage', (s.overlap_coverage_pct).toFixed(1) + '%')}
+      </div>
+      <div class="res-card">
+        <b>Chunk size distribution (chars)</b>
+        <div style="margin-top:10px">
+          ${Object.entries(dist).map(([bucket,count]) => `
+            <div style="display:flex;align-items:center;gap:10px;margin:4px 0">
+              <span style="width:74px;font-size:12px;opacity:.7">${bucket}</span>
+              <div style="flex:1;background:rgba(127,127,127,.12);border-radius:4px;height:16px;overflow:hidden">
+                <div style="width:${(count/maxDist*100)}%;height:100%;background:#6366f1"></div>
+              </div>
+              <span style="width:28px;text-align:right;font-size:12px">${count}</span>
+            </div>`).join('')}
+        </div>
+      </div>
+      ${warnings}
+      <div class="res-card" style="overflow-x:auto">
+        <b>Chunks (${d.chunks.length})</b>
+        <table style="margin-top:8px"><thead><tr>
+          <th>#</th><th>Page</th><th>Chars</th><th>Tokens</th><th>Text</th>
+        </tr></thead><tbody>
+          ${d.chunks.map(c => `<tr>
+            <td>${c.chunk_index}</td><td>${c.page_number}</td><td>${c.chars}</td><td>${c.token_count}</td>
+            <td style="max-width:460px;white-space:normal;font-size:12px;opacity:.85">${escapeHtml(c.text)}${c.text.length>=240?'…':''}</td>
+          </tr>`).join('')}
+        </tbody></table>
+      </div>`;
+  } catch (e) {
+    box.innerHTML = `<div class="empty"><div class="empty-h">Could not analyse</div><div class="empty-p">${escapeHtml(e.message)}</div></div>`;
+  }
+}
+
+/* ── Embeddings ── */
+document.getElementById('embedDoc').addEventListener('change', e => {
+  if (e.target.value) loadEmbeddings(e.target.value);
+});
+async function loadEmbeddings(docId) {
+  const box = document.getElementById('embedResults');
+  box.innerHTML = `<div class="empty"><div class="search-spin"></div><div class="empty-h">Loading vectors…</div></div>`;
+  try {
+    const res = await apiFetch('/analysis/' + docId + '/embeddings');
+    const d = await res.json();
+    if (!res.ok) throw new Error(d.detail || 'Failed');
+    if (!d.count) { box.innerHTML = `<div class="empty"><div class="empty-h">No embeddings</div><div class="empty-p">This document has no stored vectors yet.</div></div>`; return; }
+    box.innerHTML = `
+      <div class="stats">
+        ${statCard('Vectors', d.count)}
+        ${statCard('Dimensions', d.dimensions)}
+        ${statCard('Space', 'cosine')}
+      </div>
+      <div class="res-card" style="overflow-x:auto">
+        <b>Per-chunk vectors</b>
+        <table style="margin-top:8px"><thead><tr>
+          <th>#</th><th>Page</th><th>L2 norm</th><th>Leading components</th><th>Text</th>
+        </tr></thead><tbody>
+          ${d.chunks.map(c => `<tr>
+            <td>${c.chunk_index ?? '–'}</td><td>${c.page_number ?? '–'}</td><td>${c.norm}</td>
+            <td style="font-family:'JetBrains Mono',monospace;font-size:11px;opacity:.8">[${c.preview.join(', ')} …]</td>
+            <td style="max-width:340px;white-space:normal;font-size:12px;opacity:.85">${escapeHtml(c.text_excerpt)}</td>
+          </tr>`).join('')}
+        </tbody></table>
+      </div>`;
+  } catch (e) {
+    box.innerHTML = `<div class="empty"><div class="empty-h">Could not load embeddings</div><div class="empty-p">${escapeHtml(e.message)}</div></div>`;
+  }
+}
+
+/* ── Visualise (UMAP / PCA scatter) ── */
+document.getElementById('vizDoc').addEventListener('change', e => {
+  if (e.target.value) loadViz(e.target.value);
+});
+async function loadViz(docId) {
+  const box = document.getElementById('vizResults');
+  box.innerHTML = `<div class="empty"><div class="search-spin"></div><div class="empty-h">Projecting embeddings…</div></div>`;
+  try {
+    const res = await apiFetch('/analysis/' + docId + '/visualise');
+    const d = await res.json();
+    if (!res.ok) throw new Error(d.detail || 'Failed');
+    if (!d.count) { box.innerHTML = `<div class="empty"><div class="empty-h">Nothing to plot</div><div class="empty-p">This document has no stored vectors yet.</div></div>`; return; }
+    box.innerHTML = `
+      <div class="stats">
+        ${statCard('Points', d.count)}
+        ${statCard('Reducer', (d.method||'').toUpperCase())}
+        ${statCard('Source dim', d.dimensions)}
+      </div>
+      <div class="res-card">
+        <b>Embedding space — nearest-neighbour graph</b>
+        <div style="font-size:12px;opacity:.6;margin:2px 0 10px">
+          Each point is a chunk. Grey lines connect each chunk to its <b>single closest</b> chunk
+          (cosine similarity in the full ${d.dimensions}-D space, not the 2-D projection).
+          Hover / tap a point to highlight its 3 nearest.
+        </div>
+        <div id="vizPlot"></div>
+        <div id="vizInfo" style="margin-top:12px;min-height:72px;font-size:13px"></div>
+      </div>`;
+    renderScatter(document.getElementById('vizPlot'), document.getElementById('vizInfo'), d.points);
+  } catch (e) {
+    box.innerHTML = `<div class="empty"><div class="empty-h">Could not visualise</div><div class="empty-p">${escapeHtml(e.message)}</div></div>`;
+  }
+}
+
+/* Interactive nearest-neighbour scatter — inline SVG, no external libs (CSP-safe).
+   Points coloured by page; grey edges connect each chunk to its closest neighbour;
+   hovering a point highlights its top-k nearest with similarity labels. */
+function renderScatter(plotEl, infoEl, points) {
+  const W = 660, H = 460, pad = 40;
+  const xs = points.map(p => p.x), ys = points.map(p => p.y);
+  const minX = Math.min(...xs), maxX = Math.max(...xs);
+  const minY = Math.min(...ys), maxY = Math.max(...ys);
+  const sx = v => pad + (maxX===minX ? .5 : (v-minX)/(maxX-minX)) * (W-2*pad);
+  const sy = v => H-pad - (maxY===minY ? .5 : (v-minY)/(maxY-minY)) * (H-2*pad);
+  const palette = ['#6366f1','#ec4899','#10b981','#f59e0b','#3b82f6','#8b5cf6','#ef4444','#14b8a6'];
+  const pages = [...new Set(points.map(p => p.page_number))];
+  const colorOf = pg => palette[pages.indexOf(pg) % palette.length];
+  const byChunk = {}; points.forEach(p => byChunk[p.chunk_index] = p);
+  const defaultInfo = `<span style="opacity:.55">Hover or tap a point to see its nearest chunks. Grey lines already connect each chunk to its single closest neighbour.</span>`;
+
+  /* Default edges = each point's single closest neighbour (undirected, de-duped). */
+  const seen = new Set(); const baseEdges = [];
+  points.forEach(p => {
+    const nn = (p.nearest || [])[0]; if (!nn) return;
+    const a = p.chunk_index, b = nn.chunk_index;
+    const key = a < b ? a+'_'+b : b+'_'+a;
+    if (seen.has(key)) return; seen.add(key);
+    baseEdges.push({ a, b, sim: nn.similarity });
+  });
+  const simWidth = s => (0.6 + Math.max(0, s) * 2.6).toFixed(2);
+
+  const edgeSVG = baseEdges.map(e => {
+    const A = byChunk[e.a], B = byChunk[e.b]; if (!A || !B) return '';
+    return `<line class="nn-base" x1="${sx(A.x).toFixed(1)}" y1="${sy(A.y).toFixed(1)}" x2="${sx(B.x).toFixed(1)}" y2="${sy(B.y).toFixed(1)}" stroke="rgba(127,127,127,.45)" stroke-width="${simWidth(e.sim)}"/>`;
+  }).join('');
+  const dotSVG = points.map((p, i) =>
+    `<circle data-i="${i}" cx="${sx(p.x).toFixed(1)}" cy="${sy(p.y).toFixed(1)}" r="7" fill="${colorOf(p.page_number)}" fill-opacity="0.82" stroke="#0006" stroke-width="0.6" style="cursor:pointer"/>`
+  ).join('');
+  const legend = pages.map(pg => `<span style="display:inline-flex;align-items:center;gap:5px;margin-right:12px;font-size:12px"><span style="width:10px;height:10px;border-radius:50%;background:${colorOf(pg)}"></span>page ${pg}</span>`).join('');
+
+  plotEl.innerHTML = `<div style="overflow-x:auto"><svg id="vizSvg" viewBox="0 0 ${W} ${H}" style="width:100%;max-width:${W}px;height:auto;background:rgba(127,127,127,.05);border-radius:8px">
+      ${edgeSVG}<g id="hlEdges"></g>${dotSVG}
+    </svg></div><div style="margin-top:10px">${legend}</div>`;
+  infoEl.innerHTML = defaultInfo;
+
+  const svg = plotEl.querySelector('#vizSvg');
+  const hlG = plotEl.querySelector('#hlEdges');
+  const circles = [...plotEl.querySelectorAll('circle')];
+
+  function clearHL() {
+    hlG.innerHTML = '';
+    circles.forEach(c => { c.setAttribute('fill-opacity','0.82'); c.setAttribute('r','7'); });
+  }
+  function highlight(i) {
+    clearHL();
+    const p = points[i];
+    const nn = p.nearest || [];
+    const nnChunks = new Set(nn.map(x => x.chunk_index));
+    circles.forEach((c, j) => {
+      if (j === i) { c.setAttribute('r','10'); c.setAttribute('fill-opacity','1'); }
+      else if (nnChunks.has(points[j].chunk_index)) c.setAttribute('fill-opacity','0.95');
+      else c.setAttribute('fill-opacity','0.25');
+    });
+    nn.forEach((x, rank) => {
+      const B = byChunk[x.chunk_index]; if (!B) return;
+      const x1 = sx(p.x), y1 = sy(p.y), x2 = sx(B.x), y2 = sy(B.y);
+      const col = rank === 0 ? '#10b981' : '#6366f1';
+      hlG.insertAdjacentHTML('beforeend',
+        `<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="${col}" stroke-width="${(2.4 - rank*0.5).toFixed(1)}" stroke-opacity="0.9"/>`
+        + `<text x="${((x1+x2)/2).toFixed(1)}" y="${((y1+y2)/2 - 3).toFixed(1)}" fill="${col}" font-size="11" font-weight="700" text-anchor="middle" style="paint-order:stroke;stroke:rgba(0,0,0,.35);stroke-width:2.5px">${(x.similarity*100).toFixed(0)}%</text>`);
+    });
+    infoEl.innerHTML = `
+      <div><b>Chunk #${p.chunk_index}</b> <span style="opacity:.6">· page ${p.page_number}</span></div>
+      <div style="opacity:.8;margin:3px 0 8px;font-size:12px">${escapeHtml(p.text_excerpt)}…</div>
+      <div style="font-weight:600;margin-bottom:4px">Nearest chunks (cosine similarity)</div>
+      ${nn.length ? nn.map(x => `<div style="display:flex;align-items:center;gap:8px;margin:3px 0">
+          <span style="width:56px;font-size:12px">chunk #${x.chunk_index}</span>
+          <div style="flex:1;max-width:260px;background:rgba(127,127,127,.12);border-radius:4px;height:12px;overflow:hidden"><div style="width:${(x.similarity*100).toFixed(0)}%;height:100%;background:#10b981"></div></div>
+          <span style="width:46px;text-align:right;font-size:12px">${(x.similarity*100).toFixed(1)}%</span>
+        </div>`).join('') : '<span style="opacity:.5">No other chunks to compare.</span>'}`;
+  }
+
+  circles.forEach((c, i) => {
+    c.addEventListener('mouseenter', () => highlight(i));
+    c.addEventListener('click',      () => highlight(i));
+  });
+  svg.addEventListener('mouseleave', () => { clearHL(); infoEl.innerHTML = defaultInfo; });
+}
+
+/* Small reusable stat card (matches the Documents view stat styling). */
+function statCard(label, value) {
+  return `<div class="stat"><div class="stat-label">${escapeHtml(label)}</div><div class="stat-num">${escapeHtml(value)}</div></div>`;
+}
+
+/* Populate the doc filter from the same list the Documents view uses */
+async function populateSearchDocs() {
+  try {
+    const res = await apiFetch('/docs/list?page_size=100');
+    if (!res.ok) return;
+    const items = (await res.json()).items || [];
+    const sel = document.getElementById('searchDoc');
+    const current = sel.value;
+    sel.innerHTML = '<option value="">All documents</option>' +
+      items.filter(d => d.status === 'ready')
+           .map(d => `<option value="${d.id}">${escapeHtml(d.original_filename)}</option>`)
+           .join('');
+    sel.value = current;   // preserve selection across refreshes
+  } catch (e) { /* filter is optional — ignore */ }
+}
+
+function escapeHtml(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c =>
+    ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+}
+
+/* ── Run a semantic search against POST /search/semantic ── */
+const searchBtn   = document.getElementById('searchBtn');
+const searchQuery = document.getElementById('searchQuery');
+const resultsBox  = document.getElementById('searchResults');
+
+async function runSearch() {
+  const query = searchQuery.value.trim();
+  if (!query) { searchQuery.focus(); return; }
+
+  const doc_id = document.getElementById('searchDoc').value || null;
+  const top_k  = parseInt(document.getElementById('searchTopK').value, 10) || 8;
+
+  searchBtn.disabled = true;
+  resultsBox.innerHTML = `
+    <div class="empty">
+      <div class="search-spin"></div>
+      <div class="empty-h">Searching…</div>
+      <div class="empty-p">Hybrid retrieval + reranking</div>
+    </div>`;
+
+  try {
+    const res = await apiFetch('/search/semantic', {
+      method: 'POST',
+      body: JSON.stringify({ query, doc_id, top_k }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || `Search failed (${res.status})`);
+
+    renderResults(data);
+  } catch (ex) {
+    resultsBox.innerHTML = `
+      <div class="empty">
+        <div class="empty-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#f87171" stroke-width="1.5">
+          <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+        </svg></div>
+        <div class="empty-h" style="color:#f87171">Search failed</div>
+        <div class="empty-p">${escapeHtml(ex.message)}</div>
+      </div>`;
+  } finally {
+    searchBtn.disabled = false;
+  }
+}
+
+function renderResults(data) {
+  const results = data.results || [];
+  if (!results.length) {
+    resultsBox.innerHTML = `
+      <div class="empty">
+        <div class="empty-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+        </div>
+        <div class="empty-h">No matches</div>
+        <div class="empty-p">No chunks matched “${escapeHtml(data.query)}”. Try a different term, or make sure a document is uploaded and processed (status “ready”).</div>
+      </div>`;
+    return;
+  }
+
+  const rows = results.map((r, i) => {
+    const score = (r.reranker_score ?? r.fused_score ?? 0);
+    return `
+      <div class="res-card">
+        <div class="res-head">
+          <div class="res-meta">
+            <span class="res-rank">#${i + 1}</span>
+            <span class="res-src">${escapeHtml(r.source || r.doc_id)}</span>
+            <span class="res-page">p. ${r.page_number ?? '—'}</span>
+          </div>
+          <span class="res-score" title="reranker score (fused if not reranked)">${score.toFixed(4)}</span>
+        </div>
+        <div class="res-text">${escapeHtml(r.text)}</div>
+      </div>`;
+  }).join('');
+
+  resultsBox.innerHTML =
+    `<div class="res-count">${results.length} result${results.length === 1 ? '' : 's'} for “${escapeHtml(data.query)}”</div>` + rows;
+}
+
+searchBtn.addEventListener('click', runSearch);
+searchQuery.addEventListener('keydown', e => { if (e.key === 'Enter') runSearch(); });
 
 /* ── Mobile drawer ── */
 const sidebar    = document.getElementById('sidebar');

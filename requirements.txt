@@ -24,19 +24,38 @@ python-dotenv>=1.0.0
 pymupdf>=1.24.0
 python-docx>=1.1.0
 
+# OCR for scanned/image-only PDFs (parser falls back to Tesseract when a page
+# has no text layer). Requires the `tesseract-ocr` system binary — installed in
+# the Dockerfile.
+pytesseract>=0.3.10
+Pillow>=10.0.0
+
 # NLP / chunking
 nltk>=3.8.0
 tiktoken>=0.7.0
 
 # Vector DB
+# NOTE: install the FULL chromadb only. Do NOT also install `chromadb-client`
+# (the thin http-only client) — it shadows chromadb's __init__ and forces
+# "http-only client mode", breaking PersistentClient at startup and in tests.
 chromadb>=0.5.0
 
 # Embeddings / generation (HuggingFace free)
 numpy>=1.26.0
 
+# Reranking (Phase 8 — cross-encoder for hybrid search)
+sentence-transformers>=2.7.0
+
+# BM25 lexical retrieval (Phase 7 — vector_store.py)
+rank-bm25>=0.2.2
+
 # Visualisation (debug endpoints)
 umap-learn>=0.5.6
 matplotlib>=3.9.0
+
+# Task queue (arq worker + Redis) — pipeline runs in a separate worker process
+arq>=0.25.0
+redis>=5.0.0
 
 # Templates
 jinja2>=3.1.0

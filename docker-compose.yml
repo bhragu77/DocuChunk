@@ -1,0 +1,58 @@
+services:
+  app:
+    build: .
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      - APP_ENV=development
+      - UPLOAD_DIR=/app/uploads
+      - CHROMA_PERSIST_DIR=/app/chroma_db
+      - DATABASE_URL=sqlite:////app/data/app.db
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    volumes:
+      - uploads_data:/app/uploads
+      - chroma_data:/app/chroma_db
+      - sqlite_data:/app/data
+    depends_on:
+      - redis
+    restart: unless-stopped
+
+  # arq worker — runs the document pipeline in a SEPARATE process from the web app,
+  # against the SAME image and the SAME volumes (it re-fetches state from the DB by
+  # doc_id and reads the uploaded files off the shared uploads volume).
+  worker:
+    build: .
+    command: arq app.worker.WorkerSettings
+    env_file:
+      - .env
+    environment:
+      - APP_ENV=development
+      - UPLOAD_DIR=/app/uploads
+      - CHROMA_PERSIST_DIR=/app/chroma_db
+      - DATABASE_URL=sqlite:////app/data/app.db
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    volumes:
+      - uploads_data:/app/uploads
+      - chroma_data:/app/chroma_db
+      - sqlite_data:/app/data
+    depends_on:
+      - redis
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    # Not published to the host — only the app and worker reach it over the
+    # internal compose network. (Avoids clashing with any host-side redis on 6379.)
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+
+volumes:
+  uploads_data:
+  chroma_data:
+  sqlite_data:
+  redis_data:

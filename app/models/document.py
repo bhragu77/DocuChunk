@@ -39,6 +39,18 @@ class Document(Base):
     page_count: Mapped[int] = mapped_column(Integer, default=0)
     chunker_config: Mapped[dict | None] = mapped_column(JSON, nullable=True)
 
+    # Logical version of the document's content. Copied onto every Chunk at
+    # chunk-creation time (see chunker.chunk_document(doc_version=...)) and used by
+    # Phase 7 as the vector store's version field for incremental re-indexing.
+    #
+    # INCREMENT HOOK (re-upload not built yet): when re-upload of the SAME logical
+    # document is implemented, increment this before re-running the pipeline —
+    #     doc.version += 1
+    # so the new run's chunks carry a higher doc_version and Phase 7 can tombstone
+    # any chunk_ids from the previous version that are absent in the new one. Until
+    # then every document stays at version 1.
+    version: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
+
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
 

@@ -47,11 +47,35 @@ class Chunk:
     char_start: int           # character offset in full-document text
     char_end: int
     token_count: int
+    # Content-addressable identity (Phase 4 amendment). See chunker.make_chunk_id /
+    # make_content_hash. These make re-indexing stable: chunk_id is deterministic from
+    # (doc_id, char_start, char_end) so a re-upload overwrites the right vectors instead
+    # of duplicating stale content; content_hash lets Phase 7 skip re-embedding unchanged
+    # chunks; doc_version tags which logical version of the document produced this chunk.
+    content_hash: str = ""    # sha256(text)[:32]; changes iff the chunk text changes
+    doc_version: int = 1      # Document.version at chunk-creation time
     metadata: dict = field(default_factory=dict)
 
 
 @dataclass
 class EmbeddedChunk:
-    """A Chunk paired with its embedding vector, ready for ChromaDB."""
+    """
+    A Chunk paired with its embedding vector, ready for ChromaDB.
+
+    Identity pass-through: chunk_id / content_hash / doc_version are copied verbatim
+    from the source Chunk in __post_init__ — the embedder NEVER mints new identity.
+    Part 2 (vector store) uses chunk_id as the primary key and content_hash /
+    doc_version as metadata for the incremental-index contract.
+    """
     chunk: Chunk
     embedding: list[float]    # 384-dim for all-MiniLM-L6-v2
+    chunk_id: str = ""
+    content_hash: str = ""
+    doc_version: int = 1
+
+    def __post_init__(self):
+        # Always mirror the source chunk's identity — do not trust caller-supplied
+        # values, so identity can never drift from the chunk it belongs to.
+        self.chunk_id = self.chunk.chunk_id
+        self.content_hash = self.chunk.content_hash
+        self.doc_version = self.chunk.doc_version

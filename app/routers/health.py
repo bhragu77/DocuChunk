@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import text
 from app.database import get_db
 from app.config import get_settings
-import chromadb
+from app.core.dependencies import get_chroma
 import os
 
 router = APIRouter(tags=["health"])
@@ -11,7 +11,7 @@ settings = get_settings()
 
 
 @router.get("/health")
-def health_check(db: Session = Depends(get_db)):
+def health_check(db: Session = Depends(get_db), chroma=Depends(get_chroma)):
     """
     Liveness + readiness check.
     Verifies DB connectivity and ChromaDB availability.
@@ -26,10 +26,11 @@ def health_check(db: Session = Depends(get_db)):
     except Exception as e:
         checks["database"] = f"error: {e}"
 
-    # ChromaDB check
+    # ChromaDB check — exercise the ACTUAL configured client (persistent or http)
+    # from app.state, not a freshly-built one, so this reflects the client the app
+    # really uses. heartbeat() round-trips to the backing store.
     try:
-        client = chromadb.PersistentClient(path=settings.chroma_persist_dir)
-        _ = client.list_collections()
+        chroma.heartbeat()
         checks["chromadb"] = "ok"
     except Exception as e:
         checks["chromadb"] = f"error: {e}"

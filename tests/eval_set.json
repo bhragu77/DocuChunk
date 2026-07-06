@@ -1,0 +1,92 @@
+{
+  "description": "Retrieval regression fixtures for DocuChunk Phase 8. Each case has synthetic documents written for this project (no copyright). Run with tests/test_search.py::test_eval_set_apple_ambiguity.",
+  "cases": [
+    {
+      "id": "apple-ambiguity-001",
+      "description": "Apple Inc. (tech company) vs apple fruit orchards. Both documents discuss 'revenue' near 'Apple', so dense-only retrieval may surface the wrong one. BM25+RRF should fix this because 'Inc.' and 'billion' are strong lexical signals for the company doc.",
+      "failure_mode": "dense_retrieval_surfaces_orchard_chunk_due_to_shared_revenue_vocabulary",
+      "query": "What is Apple's revenue?",
+      "expected_top_chunk_id": "chunk_company_001",
+      "expected_doc_id": "doc_apple_company",
+      "documents": [
+        {
+          "doc_id": "doc_apple_company",
+          "source": "apple_inc_annual_results.txt",
+          "chunks": [
+            {
+              "chunk_id": "chunk_company_001",
+              "text": "Apple Inc. reported record annual revenue of $394 billion in fiscal year 2023, driven primarily by iPhone sales which accounted for 52 percent of total revenue. The company's services segment, including the App Store and Apple Music, grew 16 percent year-over-year to reach $85 billion.",
+              "page_number": 1,
+              "metadata": {
+                "doc_id": "doc_apple_company",
+                "source": "apple_inc_annual_results.txt",
+                "page_number": 1,
+                "chunk_index": 0,
+                "entities": ["Apple Inc.", "iPhone", "App Store", "Apple Music"]
+              }
+            },
+            {
+              "chunk_id": "chunk_company_002",
+              "text": "Apple Inc. operates retail stores in 25 countries and employs approximately 165,000 full-time equivalent workers. The company was founded by Steve Jobs, Steve Wozniak, and Ronald Wayne in Cupertino, California in 1976.",
+              "page_number": 2,
+              "metadata": {
+                "doc_id": "doc_apple_company",
+                "source": "apple_inc_annual_results.txt",
+                "page_number": 2,
+                "chunk_index": 1,
+                "entities": ["Apple Inc.", "Steve Jobs", "Steve Wozniak", "Ronald Wayne", "Cupertino"]
+              }
+            }
+          ]
+        },
+        {
+          "doc_id": "doc_apple_orchard",
+          "source": "apple_orchard_farming_guide.txt",
+          "chunks": [
+            {
+              "chunk_id": "chunk_orchard_001",
+              "text": "Apple orchards in Washington State produce over 60 percent of the United States commercial apple crop. Growers typically achieve revenue of $8,000 to $12,000 per acre depending on variety selection and prevailing market conditions. The Honeycrisp and Fuji varieties command the highest premiums.",
+              "page_number": 1,
+              "metadata": {
+                "doc_id": "doc_apple_orchard",
+                "source": "apple_orchard_farming_guide.txt",
+                "page_number": 1,
+                "chunk_index": 0,
+                "entities": ["Washington State"]
+              }
+            },
+            {
+              "chunk_id": "chunk_orchard_002",
+              "text": "Planting density for a modern high-density apple orchard ranges from 600 to 1,500 trees per acre. Irrigation scheduling and pest management are the two largest operating costs, typically accounting for 35 percent of total expenditure.",
+              "page_number": 2,
+              "metadata": {
+                "doc_id": "doc_apple_orchard",
+                "source": "apple_orchard_farming_guide.txt",
+                "page_number": 2,
+                "chunk_index": 1,
+                "entities": []
+              }
+            }
+          ]
+        }
+      ],
+      "groundedness_cases": [
+        {
+          "id": "groundedness-supported-001",
+          "answer": "Apple Inc. reported annual revenue of $394 billion in fiscal year 2023, with iPhone sales representing 52 percent of total revenue.",
+          "source_chunk_ids": ["chunk_company_001"],
+          "expected_grounded": true,
+          "note": "Every claim is directly present in chunk_company_001."
+        },
+        {
+          "id": "groundedness-unsupported-001",
+          "answer": "Apple Inc. reported annual revenue of $394 billion. They also acquired Netflix in 2023 to boost their services segment.",
+          "source_chunk_ids": ["chunk_company_001"],
+          "expected_grounded": false,
+          "unsupported_claim_hint": "acquired Netflix",
+          "note": "The Netflix acquisition claim is fabricated. chunk_company_001 mentions services growth but not any acquisition."
+        }
+      ]
+    }
+  ]
+}

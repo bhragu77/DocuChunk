@@ -1,0 +1,789 @@
+{
+  "harness": "dense_only",
+  "k": 5,
+  "provider": {
+    "name": "local",
+    "model": "sentence-transformers/all-MiniLM-L6-v2",
+    "semantic": true,
+    "note": "Real neural dense retrieval (sentence-transformers)."
+  },
+  "num_documents": 7,
+  "num_queries": 25,
+  "aggregate": {
+    "recall_at_k": 0.96,
+    "mrr": 0.92,
+    "precision_at_k": 0.24
+  },
+  "by_category": {
+    "ambiguous_entity": {
+      "n": 7,
+      "flagged": true,
+      "recall_at_k": 1.0,
+      "mrr": 1.0,
+      "precision_at_k": 0.2
+    },
+    "general": {
+      "n": 7,
+      "flagged": false,
+      "recall_at_k": 1.0,
+      "mrr": 0.9286,
+      "precision_at_k": 0.2
+    },
+    "identifier": {
+      "n": 11,
+      "flagged": true,
+      "recall_at_k": 0.9091,
+      "mrr": 0.8636,
+      "precision_at_k": 0.2909
+    }
+  },
+  "flagged_summary": {
+    "categories": [
+      "ambiguous_entity",
+      "identifier"
+    ],
+    "aggregate": {
+      "recall_at_k": 0.9444,
+      "mrr": 0.9167,
+      "precision_at_k": 0.2556
+    },
+    "queries": [
+      {
+        "id": "q-gx4200-part-bare",
+        "category": "identifier",
+        "passed": false,
+        "rank": null,
+        "retrieved_doc_at_1": "doc_gadget_zt500"
+      },
+      {
+        "id": "q-gx4200-battery-nat",
+        "category": "identifier",
+        "passed": true,
+        "rank": 1,
+        "retrieved_doc_at_1": "doc_gadget_gx4200"
+      },
+      {
+        "id": "q-hx9000-battery-nat",
+        "category": "identifier",
+        "passed": true,
+        "rank": 1,
+        "retrieved_doc_at_1": "doc_gadget_hx9000"
+      },
+      {
+        "id": "q-error-e4521-bare",
+        "category": "identifier",
+        "passed": true,
+        "rank": 1,
+        "retrieved_doc_at_1": "doc_gadget_gx4200"
+      },
+      {
+        "id": "q-error-e4251-bare",
+        "category": "identifier",
+        "passed": true,
+        "rank": 1,
+        "retrieved_doc_at_1": "doc_gadget_hx9000"
+      },
+      {
+        "id": "q-gx4200-firmware-nat",
+        "category": "identifier",
+        "passed": true,
+        "rank": 1,
+        "retrieved_doc_at_1": "doc_gadget_gx4200"
+      },
+      {
+        "id": "q-hx9000-firmware-nat",
+        "category": "identifier",
+        "passed": true,
+        "rank": 1,
+        "retrieved_doc_at_1": "doc_gadget_hx9000"
+      },
+      {
+        "id": "q-ip67-bare",
+        "category": "identifier",
+        "passed": true,
+        "rank": 1,
+        "retrieved_doc_at_1": "doc_gadget_gx4200"
+      },
+      {
+        "id": "q-support-phone-bare",
+        "category": "identifier",
+        "passed": true,
+        "rank": 2,
+        "retrieved_doc_at_1": "doc_gadget_hx9000"
+      },
+      {
+        "id": "q-gx4200-password-nat",
+        "category": "identifier",
+        "passed": true,
+        "rank": 1,
+        "retrieved_doc_at_1": "doc_gadget_gx4200"
+      },
+      {
+        "id": "q-zt500-password-nat",
+        "category": "identifier",
+        "passed": true,
+        "rank": 1,
+        "retrieved_doc_at_1": "doc_gadget_zt500"
+      },
+      {
+        "id": "q-apple-inc-revenue",
+        "category": "ambiguous_entity",
+        "passed": true,
+        "rank": 1,
+        "retrieved_doc_at_1": "doc_apple_company"
+      },
+      {
+        "id": "q-apple-grower-revenue",
+        "category": "ambiguous_entity",
+        "passed": true,
+        "rank": 1,
+        "retrieved_doc_at_1": "doc_apple_orchard"
+      },
+      {
+        "id": "q-orange-grower-revenue",
+        "category": "ambiguous_entity",
+        "passed": true,
+        "rank": 1,
+        "retrieved_doc_at_1": "doc_citrus_grove"
+      },
+      {
+        "id": "q-pear-revenue",
+        "category": "ambiguous_entity",
+        "passed": true,
+        "rank": 1,
+        "retrieved_doc_at_1": "doc_pear_company"
+      },
+      {
+        "id": "q-apple-dividend",
+        "category": "ambiguous_entity",
+        "passed": true,
+        "rank": 1,
+        "retrieved_doc_at_1": "doc_apple_company"
+      },
+      {
+        "id": "q-pear-ceo",
+        "category": "ambiguous_entity",
+        "passed": true,
+        "rank": 1,
+        "retrieved_doc_at_1": "doc_pear_company"
+      },
+      {
+        "id": "q-apple-ceo",
+        "category": "ambiguous_entity",
+        "passed": true,
+        "rank": 1,
+        "retrieved_doc_at_1": "doc_apple_company"
+      }
+    ]
+  },
+  "queries": [
+    {
+      "id": "q-gx4200-part-bare",
+      "query": "88-AZ-0097",
+      "category": "identifier",
+      "flagged": true,
+      "expected_doc_id": "doc_gadget_gx4200",
+      "expected_chunk_ids": [
+        "015f279aaacb9093412d5bee08385d20"
+      ],
+      "retrieved_top_ids": [
+        "c4ead1c99151caa39e37fa5bf6f13d06",
+        "a42e275c526e7060b51229b5579499e4",
+        "6d2a96af79dc1475c64fe6fa1e91e884",
+        "150ea3d069623aa3e9dd7d69a967cf26",
+        "40d7b41b4a680e7d450976f623543922"
+      ],
+      "retrieved_doc_at_1": "doc_gadget_zt500",
+      "rank": null,
+      "recall_at_1": 0.0,
+      "recall_at_k": 0.0,
+      "reciprocal_rank": 0.0,
+      "precision_at_k": 0.0,
+      "passed": false
+    },
+    {
+      "id": "q-gx4200-battery-nat",
+      "query": "which replacement battery does the GX-4200 use",
+      "category": "identifier",
+      "flagged": true,
+      "expected_doc_id": "doc_gadget_gx4200",
+      "expected_chunk_ids": [
+        "015f279aaacb9093412d5bee08385d20"
+      ],
+      "retrieved_top_ids": [
+        "015f279aaacb9093412d5bee08385d20",
+        "b757ce0e4022ffc1f03cae2e285f63fa",
+        "40d7b41b4a680e7d450976f623543922",
+        "5220f48c29b559907f3c6407787588a4",
+        "6d2a96af79dc1475c64fe6fa1e91e884"
+      ],
+      "retrieved_doc_at_1": "doc_gadget_gx4200",
+      "rank": 1,
+      "recall_at_1": 1.0,
+      "recall_at_k": 1.0,
+      "reciprocal_rank": 1.0,
+      "precision_at_k": 0.2,
+      "passed": true
+    },
+    {
+      "id": "q-hx9000-battery-nat",
+      "query": "which replacement battery does the HX-9000 use",
+      "category": "identifier",
+      "flagged": true,
+      "expected_doc_id": "doc_gadget_hx9000",
+      "expected_chunk_ids": [
+        "5220f48c29b559907f3c6407787588a4"
+      ],
+      "retrieved_top_ids": [
+        "5220f48c29b559907f3c6407787588a4",
+        "e7b83e7798e082abee428006bb551417",
+        "a42e275c526e7060b51229b5579499e4",
+        "015f279aaacb9093412d5bee08385d20",
+        "6d2a96af79dc1475c64fe6fa1e91e884"
+      ],
+      "retrieved_doc_at_1": "doc_gadget_hx9000",
+      "rank": 1,
+      "recall_at_1": 1.0,
+      "recall_at_k": 1.0,
+      "reciprocal_rank": 1.0,
+      "precision_at_k": 0.2,
+      "passed": true
+    },
+    {
+      "id": "q-error-e4521-bare",
+      "query": "E-4521",
+      "category": "identifier",
+      "flagged": true,
+      "expected_doc_id": "doc_gadget_gx4200",
+      "expected_chunk_ids": [
+        "015f279aaacb9093412d5bee08385d20"
+      ],
+      "retrieved_top_ids": [
+        "015f279aaacb9093412d5bee08385d20",
+        "5220f48c29b559907f3c6407787588a4",
+        "b757ce0e4022ffc1f03cae2e285f63fa",
+        "6d2a96af79dc1475c64fe6fa1e91e884",
+        "a42e275c526e7060b51229b5579499e4"
+      ],
+      "retrieved_doc_at_1": "doc_gadget_gx4200",
+      "rank": 1,
+      "recall_at_1": 1.0,
+      "recall_at_k": 1.0,
+      "reciprocal_rank": 1.0,
+      "precision_at_k": 0.2,
+      "passed": true
+    },
+    {
+      "id": "q-error-e4251-bare",
+      "query": "E-4251",
+      "category": "identifier",
+      "flagged": true,
+      "expected_doc_id": "doc_gadget_hx9000",
+      "expected_chunk_ids": [
+        "5220f48c29b559907f3c6407787588a4"
+      ],
+      "retrieved_top_ids": [
+        "5220f48c29b559907f3c6407787588a4",
+        "6d2a96af79dc1475c64fe6fa1e91e884",
+        "015f279aaacb9093412d5bee08385d20",
+        "150ea3d069623aa3e9dd7d69a967cf26",
+        "a42e275c526e7060b51229b5579499e4"
+      ],
+      "retrieved_doc_at_1": "doc_gadget_hx9000",
+      "rank": 1,
+      "recall_at_1": 1.0,
+      "recall_at_k": 1.0,
+      "reciprocal_rank": 1.0,
+      "precision_at_k": 0.2,
+      "passed": true
+    },
+    {
+      "id": "q-gx4200-firmware-nat",
+      "query": "what firmware version is recommended for the GX-4200",
+      "category": "identifier",
+      "flagged": true,
+      "expected_doc_id": "doc_gadget_gx4200",
+      "expected_chunk_ids": [
+        "015f279aaacb9093412d5bee08385d20",
+        "b757ce0e4022ffc1f03cae2e285f63fa"
+      ],
+      "retrieved_top_ids": [
+        "b757ce0e4022ffc1f03cae2e285f63fa",
+        "015f279aaacb9093412d5bee08385d20",
+        "e7b83e7798e082abee428006bb551417",
+        "40d7b41b4a680e7d450976f623543922",
+        "5220f48c29b559907f3c6407787588a4"
+      ],
+      "retrieved_doc_at_1": "doc_gadget_gx4200",
+      "rank": 1,
+      "recall_at_1": 1.0,
+      "recall_at_k": 1.0,
+      "reciprocal_rank": 1.0,
+      "precision_at_k": 0.4,
+      "passed": true
+    },
+    {
+      "id": "q-hx9000-firmware-nat",
+      "query": "what firmware version is recommended for the HX-9000",
+      "category": "identifier",
+      "flagged": true,
+      "expected_doc_id": "doc_gadget_hx9000",
+      "expected_chunk_ids": [
+        "5220f48c29b559907f3c6407787588a4",
+        "e7b83e7798e082abee428006bb551417"
+      ],
+      "retrieved_top_ids": [
+        "e7b83e7798e082abee428006bb551417",
+        "5220f48c29b559907f3c6407787588a4",
+        "b757ce0e4022ffc1f03cae2e285f63fa",
+        "a42e275c526e7060b51229b5579499e4",
+        "150ea3d069623aa3e9dd7d69a967cf26"
+      ],
+      "retrieved_doc_at_1": "doc_gadget_hx9000",
+      "rank": 1,
+      "recall_at_1": 1.0,
+      "recall_at_k": 1.0,
+      "reciprocal_rank": 1.0,
+      "precision_at_k": 0.4,
+      "passed": true
+    },
+    {
+      "id": "q-ip67-bare",
+      "query": "IP67",
+      "category": "identifier",
+      "flagged": true,
+      "expected_doc_id": "doc_gadget_gx4200",
+      "expected_chunk_ids": [
+        "015f279aaacb9093412d5bee08385d20"
+      ],
+      "retrieved_top_ids": [
+        "015f279aaacb9093412d5bee08385d20",
+        "6d2a96af79dc1475c64fe6fa1e91e884",
+        "5220f48c29b559907f3c6407787588a4",
+        "150ea3d069623aa3e9dd7d69a967cf26",
+        "b757ce0e4022ffc1f03cae2e285f63fa"
+      ],
+      "retrieved_doc_at_1": "doc_gadget_gx4200",
+      "rank": 1,
+      "recall_at_1": 1.0,
+      "recall_at_k": 1.0,
+      "reciprocal_rank": 1.0,
+      "precision_at_k": 0.2,
+      "passed": true
+    },
+    {
+      "id": "q-support-phone-bare",
+      "query": "1-800-555-0142",
+      "category": "identifier",
+      "flagged": true,
+      "expected_doc_id": "doc_gadget_gx4200",
+      "expected_chunk_ids": [
+        "015f279aaacb9093412d5bee08385d20",
+        "40d7b41b4a680e7d450976f623543922",
+        "b757ce0e4022ffc1f03cae2e285f63fa"
+      ],
+      "retrieved_top_ids": [
+        "a42e275c526e7060b51229b5579499e4",
+        "40d7b41b4a680e7d450976f623543922",
+        "c4ead1c99151caa39e37fa5bf6f13d06",
+        "5220f48c29b559907f3c6407787588a4",
+        "6d2a96af79dc1475c64fe6fa1e91e884"
+      ],
+      "retrieved_doc_at_1": "doc_gadget_hx9000",
+      "rank": 2,
+      "recall_at_1": 0.0,
+      "recall_at_k": 1.0,
+      "reciprocal_rank": 0.5,
+      "precision_at_k": 0.2,
+      "passed": true
+    },
+    {
+      "id": "q-gx4200-password-nat",
+      "query": "what is the default admin password on the GX-4200",
+      "category": "identifier",
+      "flagged": true,
+      "expected_doc_id": "doc_gadget_gx4200",
+      "expected_chunk_ids": [
+        "015f279aaacb9093412d5bee08385d20",
+        "40d7b41b4a680e7d450976f623543922",
+        "b757ce0e4022ffc1f03cae2e285f63fa"
+      ],
+      "retrieved_top_ids": [
+        "40d7b41b4a680e7d450976f623543922",
+        "b757ce0e4022ffc1f03cae2e285f63fa",
+        "a42e275c526e7060b51229b5579499e4",
+        "015f279aaacb9093412d5bee08385d20",
+        "e7b83e7798e082abee428006bb551417"
+      ],
+      "retrieved_doc_at_1": "doc_gadget_gx4200",
+      "rank": 1,
+      "recall_at_1": 1.0,
+      "recall_at_k": 1.0,
+      "reciprocal_rank": 1.0,
+      "precision_at_k": 0.6,
+      "passed": true
+    },
+    {
+      "id": "q-zt500-password-nat",
+      "query": "how do I sign in to the ZT-500 as administrator out of the box",
+      "category": "identifier",
+      "flagged": true,
+      "expected_doc_id": "doc_gadget_zt500",
+      "expected_chunk_ids": [
+        "150ea3d069623aa3e9dd7d69a967cf26",
+        "6d2a96af79dc1475c64fe6fa1e91e884",
+        "c4ead1c99151caa39e37fa5bf6f13d06"
+      ],
+      "retrieved_top_ids": [
+        "c4ead1c99151caa39e37fa5bf6f13d06",
+        "150ea3d069623aa3e9dd7d69a967cf26",
+        "6d2a96af79dc1475c64fe6fa1e91e884",
+        "a42e275c526e7060b51229b5579499e4",
+        "40d7b41b4a680e7d450976f623543922"
+      ],
+      "retrieved_doc_at_1": "doc_gadget_zt500",
+      "rank": 1,
+      "recall_at_1": 1.0,
+      "recall_at_k": 1.0,
+      "reciprocal_rank": 1.0,
+      "precision_at_k": 0.6,
+      "passed": true
+    },
+    {
+      "id": "q-apple-inc-revenue",
+      "query": "what was Apple's total annual revenue",
+      "category": "ambiguous_entity",
+      "flagged": true,
+      "expected_doc_id": "doc_apple_company",
+      "expected_chunk_ids": [
+        "3c371172ed7f50af9da2df651b81f5ff"
+      ],
+      "retrieved_top_ids": [
+        "3c371172ed7f50af9da2df651b81f5ff",
+        "66d5b008e3f5e6c42e51b3332aa71c6b",
+        "5a37785cc179ccfd0f7d45641bdd3a4b",
+        "87b8397945b8c194ef90974088910b60",
+        "0e4c93368659c9d66370c87225ae21bb"
+      ],
+      "retrieved_doc_at_1": "doc_apple_company",
+      "rank": 1,
+      "recall_at_1": 1.0,
+      "recall_at_k": 1.0,
+      "reciprocal_rank": 1.0,
+      "precision_at_k": 0.2,
+      "passed": true
+    },
+    {
+      "id": "q-apple-grower-revenue",
+      "query": "how much can someone growing apples earn from an acre",
+      "category": "ambiguous_entity",
+      "flagged": true,
+      "expected_doc_id": "doc_apple_orchard",
+      "expected_chunk_ids": [
+        "5a37785cc179ccfd0f7d45641bdd3a4b"
+      ],
+      "retrieved_top_ids": [
+        "5a37785cc179ccfd0f7d45641bdd3a4b",
+        "80f642cef5dafbb90aa683ffca9762da",
+        "3c371172ed7f50af9da2df651b81f5ff",
+        "0e4c93368659c9d66370c87225ae21bb",
+        "87b8397945b8c194ef90974088910b60"
+      ],
+      "retrieved_doc_at_1": "doc_apple_orchard",
+      "rank": 1,
+      "recall_at_1": 1.0,
+      "recall_at_k": 1.0,
+      "reciprocal_rank": 1.0,
+      "precision_at_k": 0.2,
+      "passed": true
+    },
+    {
+      "id": "q-orange-grower-revenue",
+      "query": "how much does an orange grower make per acre",
+      "category": "ambiguous_entity",
+      "flagged": true,
+      "expected_doc_id": "doc_citrus_grove",
+      "expected_chunk_ids": [
+        "80f642cef5dafbb90aa683ffca9762da"
+      ],
+      "retrieved_top_ids": [
+        "80f642cef5dafbb90aa683ffca9762da",
+        "5a37785cc179ccfd0f7d45641bdd3a4b",
+        "936428030b95ef59b8ba51e4dacd9b48",
+        "ffc9cd9b3756e3e535bcf34b07380b85",
+        "0e4c93368659c9d66370c87225ae21bb"
+      ],
+      "retrieved_doc_at_1": "doc_citrus_grove",
+      "rank": 1,
+      "recall_at_1": 1.0,
+      "recall_at_k": 1.0,
+      "reciprocal_rank": 1.0,
+      "precision_at_k": 0.2,
+      "passed": true
+    },
+    {
+      "id": "q-pear-revenue",
+      "query": "what was Pear Computing's annual revenue",
+      "category": "ambiguous_entity",
+      "flagged": true,
+      "expected_doc_id": "doc_pear_company",
+      "expected_chunk_ids": [
+        "0e4c93368659c9d66370c87225ae21bb"
+      ],
+      "retrieved_top_ids": [
+        "0e4c93368659c9d66370c87225ae21bb",
+        "83c3cd62e842a552e7bf92810cac45a8",
+        "ac7b3cccaad08bffbab9a9d9503f9e54",
+        "3c371172ed7f50af9da2df651b81f5ff",
+        "5a37785cc179ccfd0f7d45641bdd3a4b"
+      ],
+      "retrieved_doc_at_1": "doc_pear_company",
+      "rank": 1,
+      "recall_at_1": 1.0,
+      "recall_at_k": 1.0,
+      "reciprocal_rank": 1.0,
+      "precision_at_k": 0.2,
+      "passed": true
+    },
+    {
+      "id": "q-apple-dividend",
+      "query": "what dividend did Apple pay its shareholders",
+      "category": "ambiguous_entity",
+      "flagged": true,
+      "expected_doc_id": "doc_apple_company",
+      "expected_chunk_ids": [
+        "3c371172ed7f50af9da2df651b81f5ff"
+      ],
+      "retrieved_top_ids": [
+        "3c371172ed7f50af9da2df651b81f5ff",
+        "0e4c93368659c9d66370c87225ae21bb",
+        "5a37785cc179ccfd0f7d45641bdd3a4b",
+        "66d5b008e3f5e6c42e51b3332aa71c6b",
+        "87b8397945b8c194ef90974088910b60"
+      ],
+      "retrieved_doc_at_1": "doc_apple_company",
+      "rank": 1,
+      "recall_at_1": 1.0,
+      "recall_at_k": 1.0,
+      "reciprocal_rank": 1.0,
+      "precision_at_k": 0.2,
+      "passed": true
+    },
+    {
+      "id": "q-pear-ceo",
+      "query": "who runs Pear Computing",
+      "category": "ambiguous_entity",
+      "flagged": true,
+      "expected_doc_id": "doc_pear_company",
+      "expected_chunk_ids": [
+        "0e4c93368659c9d66370c87225ae21bb"
+      ],
+      "retrieved_top_ids": [
+        "0e4c93368659c9d66370c87225ae21bb",
+        "83c3cd62e842a552e7bf92810cac45a8",
+        "ac7b3cccaad08bffbab9a9d9503f9e54",
+        "3c371172ed7f50af9da2df651b81f5ff",
+        "5a37785cc179ccfd0f7d45641bdd3a4b"
+      ],
+      "retrieved_doc_at_1": "doc_pear_company",
+      "rank": 1,
+      "recall_at_1": 1.0,
+      "recall_at_k": 1.0,
+      "reciprocal_rank": 1.0,
+      "precision_at_k": 0.2,
+      "passed": true
+    },
+    {
+      "id": "q-apple-ceo",
+      "query": "who is the current chief executive of Apple",
+      "category": "ambiguous_entity",
+      "flagged": true,
+      "expected_doc_id": "doc_apple_company",
+      "expected_chunk_ids": [
+        "3c371172ed7f50af9da2df651b81f5ff"
+      ],
+      "retrieved_top_ids": [
+        "3c371172ed7f50af9da2df651b81f5ff",
+        "5a37785cc179ccfd0f7d45641bdd3a4b",
+        "0e4c93368659c9d66370c87225ae21bb",
+        "66d5b008e3f5e6c42e51b3332aa71c6b",
+        "87b8397945b8c194ef90974088910b60"
+      ],
+      "retrieved_doc_at_1": "doc_apple_company",
+      "rank": 1,
+      "recall_at_1": 1.0,
+      "recall_at_k": 1.0,
+      "reciprocal_rank": 1.0,
+      "precision_at_k": 0.2,
+      "passed": true
+    },
+    {
+      "id": "q-apple-founders",
+      "query": "who started Apple",
+      "category": "general",
+      "flagged": false,
+      "expected_doc_id": "doc_apple_company",
+      "expected_chunk_ids": [
+        "3c371172ed7f50af9da2df651b81f5ff"
+      ],
+      "retrieved_top_ids": [
+        "3c371172ed7f50af9da2df651b81f5ff",
+        "87b8397945b8c194ef90974088910b60",
+        "66d5b008e3f5e6c42e51b3332aa71c6b",
+        "0e4c93368659c9d66370c87225ae21bb",
+        "5a37785cc179ccfd0f7d45641bdd3a4b"
+      ],
+      "retrieved_doc_at_1": "doc_apple_company",
+      "rank": 1,
+      "recall_at_1": 1.0,
+      "recall_at_k": 1.0,
+      "reciprocal_rank": 1.0,
+      "precision_at_k": 0.2,
+      "passed": true
+    },
+    {
+      "id": "q-pear-founders",
+      "query": "who created Pear Computing",
+      "category": "general",
+      "flagged": false,
+      "expected_doc_id": "doc_pear_company",
+      "expected_chunk_ids": [
+        "0e4c93368659c9d66370c87225ae21bb"
+      ],
+      "retrieved_top_ids": [
+        "0e4c93368659c9d66370c87225ae21bb",
+        "83c3cd62e842a552e7bf92810cac45a8",
+        "ac7b3cccaad08bffbab9a9d9503f9e54",
+        "3c371172ed7f50af9da2df651b81f5ff",
+        "5a37785cc179ccfd0f7d45641bdd3a4b"
+      ],
+      "retrieved_doc_at_1": "doc_pear_company",
+      "rank": 1,
+      "recall_at_1": 1.0,
+      "recall_at_k": 1.0,
+      "reciprocal_rank": 1.0,
+      "precision_at_k": 0.2,
+      "passed": true
+    },
+    {
+      "id": "q-apple-employees",
+      "query": "how big is Apple's workforce",
+      "category": "general",
+      "flagged": false,
+      "expected_doc_id": "doc_apple_company",
+      "expected_chunk_ids": [
+        "3c371172ed7f50af9da2df651b81f5ff"
+      ],
+      "retrieved_top_ids": [
+        "3c371172ed7f50af9da2df651b81f5ff",
+        "5a37785cc179ccfd0f7d45641bdd3a4b",
+        "66d5b008e3f5e6c42e51b3332aa71c6b",
+        "0e4c93368659c9d66370c87225ae21bb",
+        "83c3cd62e842a552e7bf92810cac45a8"
+      ],
+      "retrieved_doc_at_1": "doc_apple_company",
+      "rank": 1,
+      "recall_at_1": 1.0,
+      "recall_at_k": 1.0,
+      "reciprocal_rank": 1.0,
+      "precision_at_k": 0.2,
+      "passed": true
+    },
+    {
+      "id": "q-orchard-varieties",
+      "query": "which apple types fetch the best prices at market",
+      "category": "general",
+      "flagged": false,
+      "expected_doc_id": "doc_apple_orchard",
+      "expected_chunk_ids": [
+        "5a37785cc179ccfd0f7d45641bdd3a4b"
+      ],
+      "retrieved_top_ids": [
+        "66d5b008e3f5e6c42e51b3332aa71c6b",
+        "5a37785cc179ccfd0f7d45641bdd3a4b",
+        "3c371172ed7f50af9da2df651b81f5ff",
+        "87b8397945b8c194ef90974088910b60",
+        "80f642cef5dafbb90aa683ffca9762da"
+      ],
+      "retrieved_doc_at_1": "doc_apple_company",
+      "rank": 2,
+      "recall_at_1": 0.0,
+      "recall_at_k": 1.0,
+      "reciprocal_rank": 0.5,
+      "precision_at_k": 0.2,
+      "passed": true
+    },
+    {
+      "id": "q-orange-varieties",
+      "query": "which oranges sell for the most",
+      "category": "general",
+      "flagged": false,
+      "expected_doc_id": "doc_citrus_grove",
+      "expected_chunk_ids": [
+        "80f642cef5dafbb90aa683ffca9762da"
+      ],
+      "retrieved_top_ids": [
+        "80f642cef5dafbb90aa683ffca9762da",
+        "ffc9cd9b3756e3e535bcf34b07380b85",
+        "936428030b95ef59b8ba51e4dacd9b48",
+        "5a37785cc179ccfd0f7d45641bdd3a4b",
+        "66d5b008e3f5e6c42e51b3332aa71c6b"
+      ],
+      "retrieved_doc_at_1": "doc_citrus_grove",
+      "rank": 1,
+      "recall_at_1": 1.0,
+      "recall_at_k": 1.0,
+      "reciprocal_rank": 1.0,
+      "precision_at_k": 0.2,
+      "passed": true
+    },
+    {
+      "id": "q-orchard-density",
+      "query": "how many trees should I plant per acre in a modern apple orchard",
+      "category": "general",
+      "flagged": false,
+      "expected_doc_id": "doc_apple_orchard",
+      "expected_chunk_ids": [
+        "5a37785cc179ccfd0f7d45641bdd3a4b"
+      ],
+      "retrieved_top_ids": [
+        "5a37785cc179ccfd0f7d45641bdd3a4b",
+        "80f642cef5dafbb90aa683ffca9762da",
+        "0e4c93368659c9d66370c87225ae21bb",
+        "87b8397945b8c194ef90974088910b60",
+        "3c371172ed7f50af9da2df651b81f5ff"
+      ],
+      "retrieved_doc_at_1": "doc_apple_orchard",
+      "rank": 1,
+      "recall_at_1": 1.0,
+      "recall_at_k": 1.0,
+      "reciprocal_rank": 1.0,
+      "precision_at_k": 0.2,
+      "passed": true
+    },
+    {
+      "id": "q-gx4200-temp",
+      "query": "what temperatures can the outdoor sensor withstand",
+      "category": "general",
+      "flagged": false,
+      "expected_doc_id": "doc_gadget_gx4200",
+      "expected_chunk_ids": [
+        "015f279aaacb9093412d5bee08385d20"
+      ],
+      "retrieved_top_ids": [
+        "015f279aaacb9093412d5bee08385d20",
+        "5220f48c29b559907f3c6407787588a4",
+        "6d2a96af79dc1475c64fe6fa1e91e884",
+        "9801d17a8045dd4e95dbcbdc5b274101",
+        "b757ce0e4022ffc1f03cae2e285f63fa"
+      ],
+      "retrieved_doc_at_1": "doc_gadget_gx4200",
+      "rank": 1,
+      "recall_at_1": 1.0,
+      "recall_at_k": 1.0,
+      "reciprocal_rank": 1.0,
+      "precision_at_k": 0.2,
+      "passed": true
+    }
+  ]
+}

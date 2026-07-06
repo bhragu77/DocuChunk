@@ -2,7 +2,7 @@ import os
 import uuid
 import math
 import logging
-from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Query, UploadFile, status
+from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Query, Request, UploadFile, status
 from sqlalchemy.orm import Session
 import chromadb
 
@@ -10,7 +10,7 @@ from app.database import get_db
 from app.models.user import User
 from app.models.document import Document, DocumentStatus
 from app.schemas.document import DocumentListResponse, DocumentResponse, DeleteResponse
-from app.core.dependencies import get_current_user, get_chroma
+from app.core.dependencies import get_current_user, get_chroma, get_arq_pool
 from app.pipeline.orchestrator import run_pipeline
 from app.config import get_settings
 
@@ -77,12 +77,18 @@ async def upload_document(
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    arq_pool=Depends(get_arq_pool),
 ):
     """
     Upload a PDF or DOCX document.
 
     Pipeline flow triggered after upload:
       uploaded → (Phase 3) parsing → (Phase 4) chunking → (Phase 6) embedding → ready
+
+    The pipeline runs in a SEPARATE arq worker process: we enqueue run_pipeline
+    with just the doc_id and return immediately with status="uploaded". The client
+    polls GET /docs/{id} to watch progress. (See the enqueue block below for the
+    inline dev/test fallback.)
 
     Learning note: we stream the file in chunks instead of reading it all into
     memory at once. This is how you handle large files in production without
@@ -136,10 +142,20 @@ async def upload_document(
     db.commit()
     db.refresh(doc)
 
-    # Kick off the parse → chunk → embed pipeline in the background.
-    # The response returns immediately with status="uploaded";
-    # the client polls GET /docs/{id} to watch status progress.
-    background_tasks.add_task(run_pipeline, doc.id)
+    # Kick off the parse → chunk → embed pipeline. Only the doc_id crosses the
+    # boundary; the worker reconstructs all state from the DB (governing rule).
+    #
+    # Production path: enqueue onto the arq worker via the Redis pool.
+    # Fallback (PIPELINE_SYNC dev mode, or no pool available — e.g. tests without
+    # the lifespan / no Redis): run inline via BackgroundTasks. Same external
+    # behavior either way — the response returns immediately with status="uploaded".
+    if settings.pipeline_sync or arq_pool is None:
+        if not settings.pipeline_sync:
+            logger.warning("No arq pool available — running pipeline inline for doc=%s", doc.id)
+        background_tasks.add_task(run_pipeline, doc.id)
+    else:
+        await arq_pool.enqueue_job("run_pipeline", doc.id)
+        logger.info("Enqueued run_pipeline for doc=%s", doc.id)
 
     return doc
 
@@ -197,6 +213,7 @@ def get_document(
 @router.delete("/{doc_id}", response_model=DeleteResponse)
 def delete_document(
     doc_id: str,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
     chroma: chromadb.ClientAPI = Depends(get_chroma),
@@ -224,6 +241,15 @@ def delete_document(
     except Exception:
         # Collection doesn't exist yet (document never reached embedding phase)
         pass
+
+    # 2b. Delete the document's chunks from the BM25 lexical index too, so the two
+    # indexes stay in sync (a deleted doc must not linger as BM25 ghosts).
+    bm25 = getattr(request.app.state, "bm25", None)
+    if bm25 is not None:
+        try:
+            bm25.delete(doc_id, current_user.id)
+        except Exception:
+            logger.exception("BM25 delete failed for doc=%s", doc_id)
 
     # 3. Delete DB record (cascades to embedding_jobs via FK)
     db.delete(doc)

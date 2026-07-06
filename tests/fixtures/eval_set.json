@@ -1,0 +1,326 @@
+{
+  "description": "Hardened retrieval eval set for Phase 8. Built to DISCRIMINATE, not to score high. Contains deliberate near-miss distractors: two tech companies with similar financials (Apple Inc. vs Pear Computing Inc.), two fruit-growing guides with per-acre economics (apple orchard vs citrus grove), and three device manuals whose identifiers are transposed decoys of one another (part 88-AZ-0097 vs 88-AZ-0079, error E-4521 vs E-4251, firmware 4.0.2 vs 4.2.0). Queries are user-style paraphrases that avoid mirroring the answer chunk's distinctive tokens, plus bare exact-code queries where a dense embedding blurs similar identifiers but BM25 nails the exact one. The goal is a visible spread across dense-only / hybrid / hybrid+rerank.",
+  "chunk_strategy": "sentence",
+  "documents": [
+    {
+      "doc_id": "doc_apple_company",
+      "source": "apple_inc_annual_report.docx",
+      "paragraphs": [
+        "Apple Inc. is a multinational technology company headquartered in Cupertino, California. Apple was founded in 1976 by Steve Jobs, Steve Wozniak, and Ronald Wayne. The company is led by chief executive Tim Cook, who stepped into the top job in 2011.",
+        "In its most recent fiscal year Apple posted total annual revenue of 394 billion dollars, driven largely by iPhone sales. Apple's board declared a quarterly cash dividend of 24 cents per share. The company employs approximately 165,000 full time equivalent workers across its worldwide operations.",
+        "Apple's services segment, which spans the App Store, iCloud, and Apple Music, kept expanding as a share of overall sales. Wearables such as the Apple Watch and AirPods also contributed to the year's results."
+      ]
+    },
+    {
+      "doc_id": "doc_pear_company",
+      "source": "pear_computing_annual_report.docx",
+      "paragraphs": [
+        "Pear Computing Inc. is a technology firm based in Austin, Texas. Pear was founded in 1998 by Marcus Feld and Priya Anand, and its current chief executive is Dana Whitfield.",
+        "For the latest fiscal year Pear reported total annual revenue of 210 billion dollars. Pear's directors approved a quarterly dividend of 18 cents per share. The firm employs roughly 92,000 people across its global offices.",
+        "Much of Pear's growth came from its cloud infrastructure division. Pear has signalled that enterprise software will be a strategic priority for the coming year."
+      ]
+    },
+    {
+      "doc_id": "doc_apple_orchard",
+      "source": "apple_orchard_growing_guide.docx",
+      "paragraphs": [
+        "Growing apples commercially demands careful attention to rootstock selection and orchard layout. A modern high density apple planting typically places 600 to 1,500 trees per acre, far more than a traditional orchard.",
+        "Profitability varies by variety and region. A well managed apple block can bring a grower somewhere between eight thousand and twelve thousand dollars per acre in a strong season. Among the fruit, Honeycrisp and Fuji varieties command the highest premiums at the packing house.",
+        "The apple harvest usually runs from late August through October depending on the cultivar. Careful cold storage lets packers extend sales of the crop well into the following spring."
+      ]
+    },
+    {
+      "doc_id": "doc_citrus_grove",
+      "source": "citrus_grove_growing_guide.docx",
+      "paragraphs": [
+        "Citrus groves in warm climates are planted at far lower densities than apple orchards, often around 100 to 200 trees per acre. Irrigation and frost protection are the major operating concerns for an orange grower.",
+        "Returns depend heavily on the fruit. An orange grower can expect roughly fourteen thousand to eighteen thousand dollars per acre in a good year. Valencia and navel oranges are the varieties that fetch the strongest prices at market.",
+        "The main citrus harvest stretches from November into the spring. Packers grade the oranges by size and colour before shipping them to distributors."
+      ]
+    },
+    {
+      "doc_id": "doc_gadget_gx4200",
+      "source": "gadgetcorp_gx4200_manual.docx",
+      "paragraphs": [
+        "The GadgetCorp GX-4200 is a weatherproof outdoor sensor unit built for field deployment. The GX-4200 carries an ingress protection rating of IP67 and works across a temperature range of minus 20 to 60 degrees Celsius.",
+        "For service on the GX-4200, the replacement battery is supplied under part number 88-AZ-0097 and must be ordered from an authorized dealer. If the GX-4200 shows error code E-4521, the internal temperature sensor has failed and the unit should be returned.",
+        "The recommended firmware for the GX-4200 is version 4.0.2. The default administrator password is gx4200admin, and GX-4200 technical support can be reached at 1-800-555-0142."
+      ]
+    },
+    {
+      "doc_id": "doc_gadget_hx9000",
+      "source": "gadgetcorp_hx9000_manual.docx",
+      "paragraphs": [
+        "The GadgetCorp HX-9000 is an indoor connectivity hub for smart home installations. The HX-9000 carries an ingress protection rating of IP54 and works across a temperature range of 0 to 45 degrees Celsius.",
+        "For service on the HX-9000, the replacement battery is supplied under part number 88-AZ-0079 and must be ordered from an authorized dealer. If the HX-9000 shows error code E-4251, a wireless connectivity fault has occurred and the hub should be power cycled.",
+        "The recommended firmware for the HX-9000 is version 4.2.0. The default administrator password is hx9000admin, and HX-9000 technical support can be reached at 1-800-555-0198."
+      ]
+    },
+    {
+      "doc_id": "doc_gadget_zt500",
+      "source": "gadgetcorp_zt500_manual.docx",
+      "paragraphs": [
+        "The GadgetCorp ZT-500 is a rack mounted network gateway for commercial buildings. The ZT-500 is designed for indoor installation and does not carry a weatherproof rating.",
+        "For service on the ZT-500, the replacement power module is supplied under part number 55-BX-1234. If the ZT-500 shows error code E-7788, a power supply fault has occurred and the module must be replaced.",
+        "The recommended firmware for the ZT-500 is version 6.2.3. To reset the unit, use the default administrator password zt500reset, and ZT-500 technical support can be reached at 1-800-555-0173."
+      ]
+    },
+    {
+      "doc_id": "doc_orchard_systems",
+      "source": "orchard_systems_inc_profile.docx",
+      "paragraphs": [
+        "Orchard Systems Inc. is an enterprise software vendor based in Denver, Colorado. Orchard Systems builds supply chain management tools for large retailers, and the word orchard in its name is a nod to its founders' roots in agriculture.",
+        "In the last fiscal year Orchard Systems reported annual revenue of 3 billion dollars and employed about 4,000 staff. Orchard Systems is privately held and has never paid a dividend to investors."
+      ]
+    },
+    {
+      "doc_id": "doc_solar_3000",
+      "source": "helios_solarmax_3000_spec.docx",
+      "paragraphs": [
+        "The SolarMax 3000 is the entry level residential solar inverter from Helios Power. The SolarMax 3000 provides a continuous output of 3 kilowatts and is intended for small households with modest energy needs.",
+        "The SolarMax 3000 ships with a standard five year warranty. Installation is wall mounted and is typically completed in a single afternoon by a certified electrician."
+      ]
+    },
+    {
+      "doc_id": "doc_solar_5000",
+      "source": "helios_solarmax_5000_spec.docx",
+      "paragraphs": [
+        "The SolarMax 5000 is the premium residential solar inverter from Helios Power. The SolarMax 5000 provides a continuous output of 5 kilowatts and is intended for large households with high energy demand.",
+        "The SolarMax 5000 ships with an extended ten year warranty. Installation is wall mounted and usually requires a certified electrician for a full working day."
+      ]
+    }
+  ],
+  "queries": [
+    {
+      "id": "q-gx4200-part-bare",
+      "query": "88-AZ-0097",
+      "category": "identifier",
+      "expected_doc_id": "doc_gadget_gx4200",
+      "expected_snippets": ["part number 88-AZ-0097"]
+    },
+    {
+      "id": "q-gx4200-battery-nat",
+      "query": "which replacement battery does the GX-4200 use",
+      "category": "identifier",
+      "expected_doc_id": "doc_gadget_gx4200",
+      "expected_snippets": ["part number 88-AZ-0097"]
+    },
+    {
+      "id": "q-hx9000-battery-nat",
+      "query": "which replacement battery does the HX-9000 use",
+      "category": "identifier",
+      "expected_doc_id": "doc_gadget_hx9000",
+      "expected_snippets": ["part number 88-AZ-0079"]
+    },
+    {
+      "id": "q-error-e4521-bare",
+      "query": "E-4521",
+      "category": "identifier",
+      "expected_doc_id": "doc_gadget_gx4200",
+      "expected_snippets": ["error code E-4521"]
+    },
+    {
+      "id": "q-error-e4251-bare",
+      "query": "E-4251",
+      "category": "identifier",
+      "expected_doc_id": "doc_gadget_hx9000",
+      "expected_snippets": ["error code E-4251"]
+    },
+    {
+      "id": "q-gx4200-firmware-nat",
+      "query": "what firmware version is recommended for the GX-4200",
+      "category": "identifier",
+      "expected_doc_id": "doc_gadget_gx4200",
+      "expected_snippets": ["version 4.0.2"]
+    },
+    {
+      "id": "q-hx9000-firmware-nat",
+      "query": "what firmware version is recommended for the HX-9000",
+      "category": "identifier",
+      "expected_doc_id": "doc_gadget_hx9000",
+      "expected_snippets": ["version 4.2.0"]
+    },
+    {
+      "id": "q-ip67-bare",
+      "query": "IP67",
+      "category": "identifier",
+      "expected_doc_id": "doc_gadget_gx4200",
+      "expected_snippets": ["rating of IP67"]
+    },
+    {
+      "id": "q-support-phone-bare",
+      "query": "1-800-555-0142",
+      "category": "identifier",
+      "expected_doc_id": "doc_gadget_gx4200",
+      "expected_snippets": ["1-800-555-0142"]
+    },
+    {
+      "id": "q-gx4200-password-nat",
+      "query": "what is the default admin password on the GX-4200",
+      "category": "identifier",
+      "expected_doc_id": "doc_gadget_gx4200",
+      "expected_snippets": ["password is gx4200admin"]
+    },
+    {
+      "id": "q-zt500-password-nat",
+      "query": "how do I sign in to the ZT-500 as administrator out of the box",
+      "category": "identifier",
+      "expected_doc_id": "doc_gadget_zt500",
+      "expected_snippets": ["password zt500reset"]
+    },
+    {
+      "id": "q-apple-inc-revenue",
+      "query": "what was Apple's total annual revenue",
+      "category": "ambiguous_entity",
+      "expected_doc_id": "doc_apple_company",
+      "expected_snippets": ["total annual revenue of 394 billion dollars"]
+    },
+    {
+      "id": "q-apple-grower-revenue",
+      "query": "how much can someone growing apples earn from an acre",
+      "category": "ambiguous_entity",
+      "expected_doc_id": "doc_apple_orchard",
+      "expected_snippets": ["eight thousand and twelve thousand dollars per acre"]
+    },
+    {
+      "id": "q-orange-grower-revenue",
+      "query": "how much does an orange grower make per acre",
+      "category": "ambiguous_entity",
+      "expected_doc_id": "doc_citrus_grove",
+      "expected_snippets": ["fourteen thousand to eighteen thousand dollars per acre"]
+    },
+    {
+      "id": "q-pear-revenue",
+      "query": "what was Pear Computing's annual revenue",
+      "category": "ambiguous_entity",
+      "expected_doc_id": "doc_pear_company",
+      "expected_snippets": ["total annual revenue of 210 billion dollars"]
+    },
+    {
+      "id": "q-apple-dividend",
+      "query": "what dividend did Apple pay its shareholders",
+      "category": "ambiguous_entity",
+      "expected_doc_id": "doc_apple_company",
+      "expected_snippets": ["24 cents per share"]
+    },
+    {
+      "id": "q-pear-ceo",
+      "query": "who runs Pear Computing",
+      "category": "ambiguous_entity",
+      "expected_doc_id": "doc_pear_company",
+      "expected_snippets": ["chief executive is Dana Whitfield"]
+    },
+    {
+      "id": "q-apple-ceo",
+      "query": "who is the current chief executive of Apple",
+      "category": "ambiguous_entity",
+      "expected_doc_id": "doc_apple_company",
+      "expected_snippets": ["chief executive Tim Cook"]
+    },
+    {
+      "id": "q-apple-founders",
+      "query": "who started Apple",
+      "category": "general",
+      "expected_doc_id": "doc_apple_company",
+      "expected_snippets": ["founded in 1976 by Steve Jobs, Steve Wozniak, and Ronald Wayne"]
+    },
+    {
+      "id": "q-pear-founders",
+      "query": "who created Pear Computing",
+      "category": "general",
+      "expected_doc_id": "doc_pear_company",
+      "expected_snippets": ["founded in 1998 by Marcus Feld and Priya Anand"]
+    },
+    {
+      "id": "q-apple-employees",
+      "query": "how big is Apple's workforce",
+      "category": "general",
+      "expected_doc_id": "doc_apple_company",
+      "expected_snippets": ["approximately 165,000 full time equivalent workers"]
+    },
+    {
+      "id": "q-orchard-varieties",
+      "query": "which apple types fetch the best prices at market",
+      "category": "general",
+      "expected_doc_id": "doc_apple_orchard",
+      "expected_snippets": ["Honeycrisp and Fuji varieties command the highest premiums"]
+    },
+    {
+      "id": "q-orange-varieties",
+      "query": "which oranges sell for the most",
+      "category": "general",
+      "expected_doc_id": "doc_citrus_grove",
+      "expected_snippets": ["Valencia and navel oranges are the varieties that fetch the strongest prices"]
+    },
+    {
+      "id": "q-orchard-density",
+      "query": "how many trees should I plant per acre in a modern apple orchard",
+      "category": "general",
+      "expected_doc_id": "doc_apple_orchard",
+      "expected_snippets": ["600 to 1,500 trees per acre"]
+    },
+    {
+      "id": "q-gx4200-temp",
+      "query": "what temperatures can the outdoor sensor withstand",
+      "category": "general",
+      "expected_doc_id": "doc_gadget_gx4200",
+      "expected_snippets": ["minus 20 to 60 degrees Celsius"]
+    },
+    {
+      "id": "q-hx9000-part-bare",
+      "query": "88-AZ-0079",
+      "category": "identifier",
+      "expected_doc_id": "doc_gadget_hx9000",
+      "expected_snippets": ["part number 88-AZ-0079"]
+    },
+    {
+      "id": "q-zt500-part-bare",
+      "query": "55-BX-1234",
+      "category": "identifier",
+      "expected_doc_id": "doc_gadget_zt500",
+      "expected_snippets": ["part number 55-BX-1234"]
+    },
+    {
+      "id": "q-firmware-402-bare",
+      "query": "4.0.2",
+      "category": "identifier",
+      "expected_doc_id": "doc_gadget_gx4200",
+      "expected_snippets": ["version 4.0.2"]
+    },
+    {
+      "id": "q-firmware-420-bare",
+      "query": "4.2.0",
+      "category": "identifier",
+      "expected_doc_id": "doc_gadget_hx9000",
+      "expected_snippets": ["version 4.2.0"]
+    },
+    {
+      "id": "q-orchard-systems-revenue",
+      "query": "what annual revenue did the Orchard Systems software company report",
+      "category": "ambiguous_entity",
+      "expected_doc_id": "doc_orchard_systems",
+      "expected_snippets": ["annual revenue of 3 billion dollars"]
+    },
+    {
+      "id": "q-solar-large-home",
+      "query": "which solar inverter suits a big household with heavy power use",
+      "category": "ambiguous_entity",
+      "expected_doc_id": "doc_solar_5000",
+      "expected_snippets": ["continuous output of 5 kilowatts"]
+    },
+    {
+      "id": "q-solar-small-home",
+      "query": "which solar inverter is meant for a modest home",
+      "category": "ambiguous_entity",
+      "expected_doc_id": "doc_solar_3000",
+      "expected_snippets": ["continuous output of 3 kilowatts"]
+    },
+    {
+      "id": "q-solar-long-warranty",
+      "query": "which solar inverter comes with the longer warranty",
+      "category": "ambiguous_entity",
+      "expected_doc_id": "doc_solar_5000",
+      "expected_snippets": ["extended ten year warranty"]
+    }
+  ]
+}

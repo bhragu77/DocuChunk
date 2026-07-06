@@ -11,6 +11,7 @@ stage independently.
 PDF  → PyMuPDF (fitz): page-by-page extraction, preserves page numbers.
 DOCX → python-docx: paragraph + table extraction, groups into logical pages.
 """
+import io
 import logging
 from pathlib import Path
 
@@ -48,7 +49,7 @@ def _parse_pdf(file_path: str, source: str) -> list[ParsedPage]:
 
     Learning note: PyMuPDF's get_text("text") returns text in reading order.
     Some PDFs are scanned images — get_text returns empty string for those.
-    A production system would fall back to OCR (e.g. pytesseract) for blank pages.
+    For such pages we fall back to OCR (Tesseract via pytesseract); see _ocr_page.
     """
     pages: list[ParsedPage] = []
 
@@ -65,7 +66,13 @@ def _parse_pdf(file_path: str, source: str) -> list[ParsedPage]:
         text = page.get_text("text")  # reading-order plain text
 
         if not text.strip():
-            logger.debug("Page %d is blank or image-only — skipping", page_num + 1)
+            # Scanned/image-only page: no text layer. Fall back to OCR before
+            # giving up, so scanned PDFs still make it through the pipeline.
+            logger.info("Page %d has no text layer — attempting OCR", page_num + 1)
+            text = _ocr_page(page, page_num + 1)
+
+        if not text.strip():
+            logger.debug("Page %d is blank or OCR yielded nothing — skipping", page_num + 1)
             continue
 
         pages.append(ParsedPage(
@@ -77,6 +84,41 @@ def _parse_pdf(file_path: str, source: str) -> list[ParsedPage]:
     doc.close()
     logger.info("PDF parsed: %d non-blank pages extracted", len(pages))
     return pages
+
+
+# OCR resolution. 300 DPI is the accuracy/speed sweet spot for Tesseract on
+# document scans — lower loses small text, higher mostly just costs time.
+_OCR_DPI = 300
+
+
+def _ocr_page(page, page_num: int) -> str:
+    """
+    OCR fallback for an image-only PDF page.
+
+    Renders the page to a raster image and runs Tesseract over it. Returns the
+    extracted text (possibly empty). Best-effort: if the OCR stack isn't available
+    (pytesseract/Pillow not installed, or the tesseract binary missing) or OCR
+    fails for any reason, we log and return "" so the page is simply skipped —
+    the pipeline degrades to its old behaviour rather than crashing.
+    """
+    try:
+        import pytesseract
+        from PIL import Image
+    except Exception as e:
+        logger.warning("OCR unavailable (pytesseract/Pillow not importable): %s", e)
+        return ""
+
+    try:
+        pix = page.get_pixmap(dpi=_OCR_DPI)
+        # Round-trip through PNG bytes so PIL gets the colourspace/alpha right
+        # regardless of the source page's pixel format.
+        img = Image.open(io.BytesIO(pix.tobytes("png")))
+        text = pytesseract.image_to_string(img)
+        logger.info("OCR page %d: extracted %d chars", page_num, len(text.strip()))
+        return text
+    except Exception as e:
+        logger.warning("OCR failed for page %d: %s", page_num, e)
+        return ""
 
 
 # ── DOCX ──────────────────────────────────────────────────────────────────────

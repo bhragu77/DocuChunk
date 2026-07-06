@@ -1,4 +1,6 @@
 import io
+import shutil
+import tempfile
 import pytest
 import chromadb
 from fastapi.testclient import TestClient
@@ -15,8 +17,11 @@ TEST_DATABASE_URL = "sqlite:///./test_docs.db"
 engine = create_engine(TEST_DATABASE_URL, connect_args={"check_same_thread": False})
 TestingSession = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-# In-memory ChromaDB for tests — avoids needing the lifespan to run
-_test_chroma = chromadb.EphemeralClient()
+# Persistent ChromaDB (CHROMA_MODE=persistent) against a throwaway temp dir, so the
+# suite needs no external Chroma server and never touches the real ./chroma_db.
+# Cleaned up in the setup_db fixture teardown.
+_test_chroma_dir = tempfile.mkdtemp(prefix="chroma_test_docs_")
+_test_chroma = chromadb.PersistentClient(path=_test_chroma_dir)
 
 
 def override_get_db():
@@ -40,6 +45,7 @@ def setup_db():
     yield
     Base.metadata.drop_all(bind=engine)
     app.dependency_overrides.clear()
+    shutil.rmtree(_test_chroma_dir, ignore_errors=True)
 
 
 client = TestClient(app)
