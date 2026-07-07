@@ -63,11 +63,23 @@ def _doc_embeddings(chroma, user_id: str, doc_id: str) -> dict:
     try:
         collection = chroma.get_collection(name=collection_name(user_id))
     except Exception:
+        # Collection doesn't exist yet (document never reached embedding phase).
         return {"ids": [], "embeddings": [], "metadatas": [], "documents": []}
-    return collection.get(
-        where={"doc_id": doc_id},
-        include=["embeddings", "metadatas", "documents"],
-    )
+    try:
+        return collection.get(
+            where={"doc_id": doc_id},
+            include=["embeddings", "metadatas", "documents"],
+        )
+    except Exception as exc:
+        # A transient vector-store error (e.g. a read racing an in-flight embedding
+        # write) must not escape as a raw 500 — the frontend does res.json() on the
+        # body and a plain-text "Internal Server Error" throws "Unexpected token 'I'".
+        # Surface it as a clean, retryable JSON 503 instead.
+        logger.warning("Chroma get failed for doc=%s: %s", doc_id, exc)
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Vector store is busy (embeddings may still be processing). Please retry.",
+        ) from exc
 
 
 # ── Chunk Analyser ──────────────────────────────────────────────────────────────
