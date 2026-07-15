@@ -1,334 +1,261 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Create Account — DocuChunk</title>
+  <title>Create account — DocuChunk</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
   <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
 
-    :root {
-      --gold:        #C9A84C;
-      --gold-hi:     #FFD700;
-      --gold-dim:    rgba(201,168,76,0.10);
-      --gold-border: rgba(201,168,76,0.28);
-      --bg:          #060503;
-      --card-bg:     rgba(10,8,4,0.88);
-      --text:        #F0E8D8;
-      --text2:       #8A7A5A;
-      --text3:       #4A3A22;
-      --input-bg:    rgba(255,255,255,0.03);
-      --input-border:rgba(201,168,76,0.16);
+    :root, :root[data-theme="dark"] {
+      --bg:#04070f; --bg-1:#070c18; --bg-2:#0c1220; --bg-card:#0f1826; --bg-hover:#131e2e;
+      --b:rgba(30,90,180,0.22); --b-hi:rgba(0,170,255,0.4);
+      --cyan:#00C8FF; --cyan-dim:rgba(0,200,255,0.09); --cyan-glow:rgba(0,200,255,0.18);
+      --blue:#0055FF; --text:#D8E8FF; --text2:#6888AA; --text3:#2A4060; --red:#FF6B7D;
+      --panel-grad:radial-gradient(120% 120% at 20% 15%, rgba(0,85,255,0.28), transparent 55%),
+                   radial-gradient(120% 120% at 85% 80%, rgba(0,200,255,0.20), transparent 55%),
+                   linear-gradient(160deg,#060b16,#0a1220 60%,#04070f);
+      --grid:rgba(120,170,255,0.05);
+    }
+    :root[data-theme="light"] {
+      --bg:#eef3fb; --bg-1:#ffffff; --bg-2:#f4f7fc; --bg-card:#ffffff; --bg-hover:#eaf1fb;
+      --b:rgba(20,80,160,0.16); --b-hi:rgba(0,120,220,0.4);
+      --cyan:#0091c8; --cyan-dim:rgba(0,145,200,0.10); --cyan-glow:rgba(0,145,200,0.15);
+      --blue:#0055FF; --text:#0c1a2e; --text2:#546b86; --text3:#a7bad2; --red:#d63a4e;
+      --panel-grad:radial-gradient(120% 120% at 18% 12%, rgba(0,85,255,0.20), transparent 55%),
+                   radial-gradient(120% 120% at 88% 82%, rgba(0,150,210,0.18), transparent 55%),
+                   linear-gradient(160deg,#0a1a3a,#0d2350 55%,#123068);
+      --grid:rgba(255,255,255,0.06);
     }
 
-    html, body { height: 100%; overflow-x: hidden; background: var(--bg); font-family: 'Inter', sans-serif; color: var(--text); -webkit-font-smoothing: antialiased; }
+    html, body { height:100%; }
+    body { background:var(--bg); color:var(--text); font-family:'Inter',-apple-system,sans-serif;
+      -webkit-font-smoothing:antialiased; display:flex; min-height:100vh; }
 
-    #bg-canvas { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 0; }
-    .vignette  { position: fixed; inset: 0; z-index: 1; pointer-events: none;
-      background: radial-gradient(ellipse at center, transparent 30%, rgba(6,5,3,0.65) 70%, rgba(6,5,3,0.92) 100%); }
+    /* brand panel */
+    .brand { flex:1 1 46%; position:relative; overflow:hidden; background:var(--panel-grad);
+      padding:56px 56px 44px; display:flex; flex-direction:column; color:#eaf2ff; }
+    .brand::before { content:''; position:absolute; inset:0;
+      background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);
+      background-size:34px 34px; mask-image:radial-gradient(120% 90% at 30% 20%,#000 30%,transparent 75%); pointer-events:none; }
+    .brand > * { position:relative; z-index:1; }
+    .brand-logo { display:flex; align-items:center; gap:11px; color:#fff; }
+    .logo-box { width:34px; height:34px; border-radius:9px; background:linear-gradient(135deg,var(--blue),var(--cyan));
+      display:grid; place-items:center; font-weight:800; color:#fff; font-size:16px; box-shadow:0 6px 20px rgba(0,120,255,0.45); }
+    .brand-logo span { font-weight:800; font-size:1.05rem; }
+    .brand-hero { margin-top:auto; }
+    .brand-eyebrow { display:inline-flex; align-items:center; gap:7px; font-size:0.72rem; font-weight:600;
+      letter-spacing:0.08em; text-transform:uppercase; color:#9fd4ff; background:rgba(0,200,255,0.10);
+      border:1px solid rgba(0,200,255,0.22); padding:5px 11px; border-radius:999px; margin-bottom:22px; }
+    .brand-eyebrow .dot { width:6px; height:6px; border-radius:50%; background:var(--cyan); box-shadow:0 0 8px var(--cyan); }
+    .brand-title { font-size:2.05rem; line-height:1.14; font-weight:800; letter-spacing:-0.03em; max-width:15ch; }
+    .brand-title em { font-style:normal; background:linear-gradient(135deg,#7fd7ff,#4d9bff); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; }
+    .brand-sub { margin-top:16px; font-size:0.98rem; line-height:1.6; color:rgba(226,240,255,0.72); max-width:44ch; }
+    .brand-feats { margin-top:30px; display:flex; flex-direction:column; gap:14px; }
+    .feat { display:flex; align-items:flex-start; gap:12px; }
+    .feat-ico { width:34px; height:34px; border-radius:9px; flex-shrink:0; background:rgba(0,200,255,0.12);
+      border:1px solid rgba(0,200,255,0.22); display:grid; place-items:center; color:#9fe0ff; }
+    .feat-ico svg { width:17px; height:17px; }
+    .feat-t { font-size:0.9rem; font-weight:600; color:#eaf2ff; }
+    .feat-d { font-size:0.8rem; color:rgba(226,240,255,0.6); margin-top:1px; }
+    .brand-foot { margin-top:34px; display:flex; align-items:center; gap:8px; font-family:'JetBrains Mono',monospace;
+      font-size:0.7rem; letter-spacing:0.04em; color:rgba(226,240,255,0.5); }
+    .brand-foot svg { width:12px; height:12px; }
 
-    .page {
-      position: relative; z-index: 10;
-      min-height: 100vh;
-      display: flex; align-items: center; justify-content: center;
-      padding: 24px 16px;
-      overflow-y: auto;
-    }
+    /* auth panel */
+    .auth { flex:1 1 54%; display:flex; align-items:center; justify-content:center; padding:40px 24px; position:relative; }
+    .theme-btn { position:absolute; top:20px; right:20px; width:38px; height:38px; border-radius:10px;
+      background:var(--bg-card); border:1px solid var(--b); color:var(--text2); display:grid; place-items:center; cursor:pointer; transition:.15s; }
+    .theme-btn:hover { color:var(--cyan); border-color:var(--b-hi); }
+    .theme-btn svg { width:17px; height:17px; }
 
-    .card {
-      width: 100%; max-width: 440px;
-      background: var(--card-bg);
-      border: 1px solid var(--gold-border);
-      border-radius: 20px;
-      padding: 40px 36px 36px;
-      backdrop-filter: blur(28px);
-      -webkit-backdrop-filter: blur(28px);
-      box-shadow: 0 0 0 1px rgba(201,168,76,0.06), 0 40px 100px rgba(0,0,0,0.75), 0 0 100px rgba(201,168,76,0.07);
-      animation: fadeUp 0.55s cubic-bezier(0.4,0,0.2,1) both;
-    }
-    @keyframes fadeUp { from { opacity:0; transform:translateY(24px); } to { opacity:1; transform:translateY(0); } }
+    .card { width:100%; max-width:400px; animation:rise .5s cubic-bezier(.4,0,.2,1) both; }
+    @keyframes rise { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:none} }
+    .card-brand { display:none; align-items:center; gap:10px; margin-bottom:28px; color:var(--text); }
+    .card-brand .logo-box { width:30px; height:30px; font-size:14px; }
+    .card-brand span { font-weight:800; }
+    .card-title { font-size:1.6rem; font-weight:800; letter-spacing:-0.025em; }
+    .card-sub { font-size:0.87rem; color:var(--text2); margin-top:6px; margin-bottom:26px; }
+    .card-sub a { color:var(--cyan); text-decoration:none; font-weight:600; }
+    .card-sub a:hover { text-decoration:underline; }
 
-    /* Logo */
-    .logo { display: flex; align-items: center; gap: 11px; margin-bottom: 32px; text-decoration: none; }
-    .logo-icon {
-      width: 36px; height: 36px;
-      background: linear-gradient(135deg, #8A6010, var(--gold), var(--gold-hi));
-      border-radius: 10px;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 16px; font-weight: 900; color: #000;
-      box-shadow: 0 0 20px rgba(201,168,76,0.5), 0 4px 12px rgba(0,0,0,0.4);
-    }
-    .logo-name {
-      font-size: 1.1rem; font-weight: 800;
-      background: linear-gradient(135deg, var(--gold) 0%, var(--gold-hi) 50%, var(--gold) 100%);
-      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
-    }
-    .logo-version { margin-left: auto; font-size: 0.65rem; font-family: 'JetBrains Mono', monospace; color: var(--text3); border: 1px solid var(--text3); border-radius: 4px; padding: 1px 6px; }
+    .oauth-row { display:flex; flex-direction:column; gap:10px; }
+    .btn-oauth { display:flex; align-items:center; justify-content:center; gap:10px; padding:11px 16px; border-radius:10px;
+      font-size:0.88rem; font-weight:600; cursor:pointer; text-decoration:none; transition:.18s;
+      background:var(--bg-card); border:1px solid var(--b); color:var(--text); }
+    .btn-oauth:hover { border-color:var(--b-hi); background:var(--bg-hover); transform:translateY(-1px); }
 
-    .card-title { font-size: 1.55rem; font-weight: 800; letter-spacing: -0.025em; margin-bottom: 4px; }
-    .card-sub   { font-size: 0.82rem; color: var(--text2); margin-bottom: 28px; }
-    .card-sub a { color: var(--gold); text-decoration: none; font-weight: 600; }
-    .card-sub a:hover { color: var(--gold-hi); text-decoration: underline; }
+    .divider { display:flex; align-items:center; gap:12px; margin:22px 0; color:var(--text3); font-size:0.72rem;
+      font-family:'JetBrains Mono',monospace; letter-spacing:0.06em; }
+    .divider::before, .divider::after { content:''; flex:1; height:1px; background:var(--b); }
 
-    /* OAuth */
-    .oauth-row { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
-    .btn-oauth {
-      display: flex; align-items: center; justify-content: center; gap: 10px;
-      padding: 11px 16px; border-radius: 10px;
-      font-size: 0.87rem; font-weight: 600;
-      cursor: pointer; text-decoration: none;
-      transition: all 0.2s; position: relative; overflow: hidden;
-    }
-    .oauth-google { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.12); color: var(--text); }
-    .oauth-google:hover { background: rgba(255,255,255,0.07); border-color: rgba(255,255,255,0.22); transform: translateY(-1px); box-shadow: 0 6px 20px rgba(0,0,0,0.4); }
-    .oauth-github { background: rgba(22,27,34,0.9); border: 1px solid rgba(48,54,61,0.8); color: #e6edf3; }
-    .oauth-github:hover { background: rgba(33,38,45,0.95); border-color: rgba(80,90,100,0.8); transform: translateY(-1px); box-shadow: 0 6px 20px rgba(0,0,0,0.5); }
+    .err-box { display:none; background:rgba(255,107,125,0.09); border:1px solid rgba(255,107,125,0.28);
+      border-radius:9px; padding:10px 14px; font-size:0.82rem; color:var(--red); margin-bottom:16px; line-height:1.4; }
+    .err-box.show { display:block; animation:shake .35s ease; }
+    @keyframes shake { 0%,100%{transform:translateX(0)} 20%,60%{transform:translateX(-4px)} 40%,80%{transform:translateX(4px)} }
 
-    .divider { display: flex; align-items: center; gap: 12px; margin: 20px 0; color: var(--text3); font-size: 0.75rem; font-family: 'JetBrains Mono', monospace; letter-spacing: 0.06em; }
-    .divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: linear-gradient(90deg, transparent, var(--gold-border), transparent); }
+    .fgroup { margin-bottom:15px; }
+    .flabel { display:block; font-size:0.73rem; font-weight:600; color:var(--text2); margin-bottom:7px;
+      letter-spacing:0.04em; text-transform:uppercase; }
+    .finput-wrap { position:relative; }
+    .finput { width:100%; padding:11px 14px; background:var(--bg-1); border:1px solid var(--b); border-radius:9px;
+      color:var(--text); font-size:0.9rem; font-family:'Inter',sans-serif; outline:none; transition:.2s; }
+    .finput:focus { border-color:var(--cyan); background:var(--cyan-dim); box-shadow:0 0 0 3px var(--cyan-glow); }
+    .finput::placeholder { color:var(--text3); }
+    .eye-btn { position:absolute; right:12px; top:50%; transform:translateY(-50%); background:none; border:none;
+      cursor:pointer; color:var(--text3); padding:2px; display:flex; transition:color .2s; }
+    .eye-btn:hover { color:var(--cyan); }
+    .eye-btn svg { width:16px; height:16px; }
 
-    /* Error */
-    .err-box { display: none; background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.25); border-radius: 8px; padding: 10px 14px; font-size: 0.82rem; color: #f87171; margin-bottom: 16px; }
-    .err-box.show { display: block; animation: shake 0.35s ease; }
-    @keyframes shake { 0%,100% { transform:translateX(0); } 20%,60% { transform:translateX(-4px); } 40%,80% { transform:translateX(4px); } }
+    /* strength meter */
+    .str-track { height:5px; border-radius:3px; background:var(--bg-2); border:1px solid var(--b); overflow:hidden; margin-top:9px; }
+    .str-fill { height:100%; width:0; border-radius:3px; transition:width .25s, background .25s; }
+    .str-hint { font-size:0.72rem; margin-top:6px; min-height:14px; font-weight:600; }
 
-    /* Form */
-    .fgroup  { margin-bottom: 14px; }
-    .flabel  { display: block; font-size: 0.75rem; font-weight: 600; color: var(--text2); margin-bottom: 7px; letter-spacing: 0.04em; text-transform: uppercase; }
-    .fw      { position: relative; }
-    .finput  {
-      width: 100%; padding: 11px 14px;
-      background: var(--input-bg);
-      border: 1px solid var(--input-border);
-      border-radius: 9px; color: var(--text);
-      font-size: 0.9rem; font-family: 'Inter', sans-serif;
-      outline: none; transition: all 0.22s;
-    }
-    .finput:focus { border-color: var(--gold); background: rgba(201,168,76,0.04); box-shadow: 0 0 0 3px rgba(201,168,76,0.10), 0 0 20px rgba(201,168,76,0.08); }
-    .finput::placeholder { color: var(--text3); }
-    .finput.pr { padding-right: 40px; }
+    .btn-submit { width:100%; margin-top:8px; padding:13px; background:linear-gradient(135deg,var(--blue),var(--cyan));
+      background-size:160% 100%; border:none; border-radius:10px; color:#fff; font-size:0.92rem; font-weight:700; cursor:pointer; transition:.25s; }
+    .btn-submit:hover { background-position:right center; transform:translateY(-1px); box-shadow:0 10px 28px rgba(0,120,255,0.4); }
+    .btn-submit:disabled { opacity:.55; cursor:not-allowed; transform:none; box-shadow:none; }
+    .btn-submit:active { transform:translateY(0); }
+    .spin { display:inline-block; width:14px; height:14px; border:2px solid rgba(255,255,255,0.35); border-top-color:#fff;
+      border-radius:50%; animation:rot .6s linear infinite; vertical-align:middle; margin-right:7px; }
+    @keyframes rot { to{transform:rotate(360deg)} }
 
-    .eye-btn { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: var(--text3); padding: 2px; transition: color 0.2s; display: flex; align-items: center; }
-    .eye-btn:hover { color: var(--gold); }
-    .eye-btn svg { width: 16px; height: 16px; }
+    .flinks { display:flex; justify-content:center; margin-top:20px; }
+    .flinks a { font-size:0.82rem; color:var(--text2); text-decoration:none; }
+    .flinks a:hover { color:var(--cyan); }
+    .terms { font-size:0.72rem; color:var(--text3); text-align:center; margin-top:18px; line-height:1.5; }
+    .terms a { color:var(--text2); }
 
-    /* Strength bar */
-    .str-bar  { height: 3px; background: rgba(255,255,255,0.06); border-radius: 100px; margin-top: 8px; overflow: hidden; }
-    .str-fill { height: 100%; border-radius: 100px; transition: width 0.3s, background 0.3s; width: 0; }
-    .str-hint { font-size: 0.7rem; margin-top: 5px; min-height: 1em; transition: color 0.3s; font-family: 'JetBrains Mono', monospace; }
-
-    /* Terms */
-    .terms { font-size: 0.74rem; color: var(--text3); margin-top: 14px; line-height: 1.5; text-align: center; }
-    .terms a { color: var(--gold); text-decoration: none; }
-    .terms a:hover { color: var(--gold-hi); }
-
-    /* Submit */
-    .btn-submit {
-      width: 100%; margin-top: 8px;
-      padding: 13px;
-      background: linear-gradient(135deg, #8A6010 0%, var(--gold) 40%, var(--gold-hi) 70%, var(--gold) 100%);
-      background-size: 200% 100%;
-      border: none; border-radius: 10px;
-      color: #000; font-size: 0.92rem; font-weight: 800;
-      cursor: pointer; transition: all 0.3s; position: relative; overflow: hidden;
-    }
-    .btn-submit:hover { transform: translateY(-1px); box-shadow: 0 8px 28px rgba(201,168,76,0.45), 0 2px 8px rgba(0,0,0,0.4); }
-    .btn-submit:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
-    .spin { display: inline-block; width: 14px; height: 14px; border: 2px solid rgba(0,0,0,0.25); border-top-color: #000; border-radius: 50%; animation: rot 0.6s linear infinite; vertical-align: middle; margin-right: 6px; }
-    @keyframes rot { to { transform: rotate(360deg); } }
-
-    .flinks { display: flex; justify-content: center; margin-top: 18px; }
-    .flinks a { font-size: 0.8rem; color: var(--text2); text-decoration: none; transition: color 0.2s; }
-    .flinks a:hover { color: var(--gold); }
-
-    .security { display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 22px; padding-top: 18px; border-top: 1px solid rgba(201,168,76,0.08); font-size: 0.7rem; font-family: 'JetBrains Mono', monospace; color: var(--text3); letter-spacing: 0.04em; }
-    .security svg { width: 11px; height: 11px; }
+    @media (max-width:900px) { .brand { display:none; } .auth { flex:1; } .card-brand { display:flex; } }
+    @media (max-width:480px) { .auth { padding:24px 16px; align-items:flex-start; } .card-title { font-size:1.4rem; } }
   </style>
 </head>
 <body>
 
-<canvas id="bg-canvas"></canvas>
-<div class="vignette"></div>
-
-<div class="page">
-  <div class="card">
-
-    <a href="/" class="logo">
-      <div class="logo-icon">D</div>
-      <span class="logo-name">DocuChunk</span>
-      <span class="logo-version">v0.1.0</span>
-    </a>
-
-    <h1 class="card-title">Create account</h1>
-    <p class="card-sub">Already have one? <a href="/login">Sign in →</a></p>
-
-    <div class="oauth-row">
-      <a href="/auth/oauth/google" class="btn-oauth oauth-google">
-        <svg width="18" height="18" viewBox="0 0 48 48">
-          <path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.2l6.8-6.8C35.8 2.4 30.2 0 24 0 14.7 0 6.7 5.5 2.9 13.6l7.9 6.1C12.6 13.2 17.9 9.5 24 9.5z"/>
-          <path fill="#4285F4" d="M46.1 24.6c0-1.6-.1-3.1-.4-4.6H24v8.7h12.4c-.5 2.8-2.1 5.1-4.5 6.7l7 5.4c4.1-3.8 6.5-9.4 6.5-16.2z"/>
-          <path fill="#FBBC05" d="M10.8 28.3A14.6 14.6 0 0 1 9.5 24c0-1.5.3-2.9.7-4.3L2.3 13.6A23.9 23.9 0 0 0 0 24c0 3.8.9 7.4 2.5 10.5l8.3-6.2z"/>
-          <path fill="#34A853" d="M24 48c6.2 0 11.4-2 15.2-5.5l-7-5.4c-2.1 1.4-4.8 2.3-8.2 2.3-6.1 0-11.4-3.7-13.2-9.1l-7.9 6.1C6.7 42.5 14.7 48 24 48z"/>
-        </svg>
-        Continue with Google
-      </a>
-      <a href="/auth/oauth/github" class="btn-oauth oauth-github">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/>
-        </svg>
-        Continue with GitHub
-      </a>
+  <section class="brand">
+    <a href="/" class="brand-logo" style="text-decoration:none"><div class="logo-box">D</div><span>DocuChunk</span></a>
+    <div class="brand-hero">
+      <span class="brand-eyebrow"><span class="dot"></span>Free to start</span>
+      <h1 class="brand-title">Your documents, <em>answerable</em> in a minute.</h1>
+      <p class="brand-sub">Create an account, upload a file, and start asking questions — with grounded, cited answers from hybrid retrieval and source-level verification.</p>
+      <div class="brand-feats">
+        <div class="feat"><div class="feat-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div><div><div class="feat-t">Hybrid semantic search</div><div class="feat-d">Dense embeddings + BM25, fused and reranked</div></div></div>
+        <div class="feat"><div class="feat-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></div><div><div class="feat-t">Grounded &amp; cited</div><div class="feat-d">Every claim traced back to its source</div></div></div>
+        <div class="feat"><div class="feat-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div><div><div class="feat-t">Private by design</div><div class="feat-d">Your documents stay in your workspace</div></div></div>
+      </div>
     </div>
+    <div class="brand-foot"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>JWT · bcrypt · TLS · per-user isolation</div>
+  </section>
 
-    <div class="divider">or register with email</div>
+  <section class="auth">
+    <button class="theme-btn" id="themeBtn" title="Toggle theme" aria-label="Toggle theme">
+      <svg id="themeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+    </button>
 
-    <div class="err-box" id="errBox"></div>
+    <div class="card">
+      <a href="/" class="card-brand" style="text-decoration:none"><div class="logo-box">D</div><span>DocuChunk</span></a>
 
-    <form id="regForm" novalidate>
-      <div class="fgroup">
-        <label class="flabel" for="fullName">Full name</label>
-        <input class="finput" type="text" id="fullName" placeholder="Bhragu Gaur" autocomplete="name" />
+      <h1 class="card-title">Create your account</h1>
+      <p class="card-sub">Already have one? <a href="/login">Sign in →</a></p>
+
+      <div class="oauth-row">
+        <a href="/auth/oauth/google" class="btn-oauth">
+          <svg width="18" height="18" viewBox="0 0 48 48">
+            <path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.2l6.8-6.8C35.8 2.4 30.2 0 24 0 14.7 0 6.7 5.5 2.9 13.6l7.9 6.1C12.6 13.2 17.9 9.5 24 9.5z"/>
+            <path fill="#4285F4" d="M46.1 24.6c0-1.6-.1-3.1-.4-4.6H24v8.7h12.4c-.5 2.8-2.1 5.1-4.5 6.7l7 5.4c4.1-3.8 6.5-9.4 6.5-16.2z"/>
+            <path fill="#FBBC05" d="M10.8 28.3A14.6 14.6 0 0 1 9.5 24c0-1.5.3-2.9.7-4.3L2.3 13.6A23.9 23.9 0 0 0 0 24c0 3.8.9 7.4 2.5 10.5l8.3-6.2z"/>
+            <path fill="#34A853" d="M24 48c6.2 0 11.4-2 15.2-5.5l-7-5.4c-2.1 1.4-4.8 2.3-8.2 2.3-6.1 0-11.4-3.7-13.2-9.1l-7.9 6.1C6.7 42.5 14.7 48 24 48z"/>
+          </svg>
+          Sign up with Google
+        </a>
       </div>
-      <div class="fgroup">
-        <label class="flabel" for="email">Email address</label>
-        <input class="finput" type="email" id="email" placeholder="you@example.com" autocomplete="email" required />
-      </div>
-      <div class="fgroup">
-        <label class="flabel" for="password">Password</label>
-        <div class="fw">
-          <input class="finput pr" type="password" id="password" placeholder="Min 8 characters" autocomplete="new-password" required />
-          <button type="button" class="eye-btn" id="eyeBtn">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-          </button>
+
+      <div class="divider">or with email</div>
+
+      <div class="err-box" id="errBox"></div>
+
+      <form id="regForm" novalidate>
+        <div class="fgroup">
+          <label class="flabel" for="fullName">Full name <span style="text-transform:none;color:var(--text3)">(optional)</span></label>
+          <input class="finput" type="text" id="fullName" placeholder="Ada Lovelace" autocomplete="name" />
         </div>
-        <div class="str-bar"><div class="str-fill" id="strFill"></div></div>
-        <div class="str-hint" id="strHint"></div>
-      </div>
+        <div class="fgroup">
+          <label class="flabel" for="email">Email address</label>
+          <input class="finput" type="email" id="email" placeholder="you@example.com" autocomplete="email" required />
+        </div>
+        <div class="fgroup">
+          <label class="flabel" for="password">Password</label>
+          <div class="finput-wrap">
+            <input class="finput" type="password" id="password" placeholder="At least 8 characters" autocomplete="new-password" style="padding-right:40px" required />
+            <button type="button" class="eye-btn" id="eyeBtn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+          </div>
+          <div class="str-track"><div class="str-fill" id="strFill"></div></div>
+          <div class="str-hint" id="strHint"></div>
+        </div>
+        <button type="submit" class="btn-submit" id="submitBtn">Create account</button>
+      </form>
 
-      <button type="submit" class="btn-submit" id="submitBtn">Create Account</button>
-    </form>
-
-    <div class="terms">
-      By creating an account you agree to our
-      <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a>.
+      <div class="flinks"><a href="/login">Already have an account? Sign in</a></div>
+      <p class="terms">By creating an account you agree to our <a href="#">Terms</a> and <a href="#">Privacy Policy</a>.</p>
     </div>
+  </section>
 
-    <div class="flinks">
-      <a href="/login">Already have an account? Sign in →</a>
-    </div>
-
-    <div class="security">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-        <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-      </svg>
-      bcrypt · SHA-256 · JWT HS256 · TLS
-    </div>
-  </div>
-</div>
-
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
 <script>
-/* ═══════════════════ THREE.JS (same gold network) ═══════════════════ */
-(function () {
-  const canvas   = document.getElementById('bg-canvas');
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
-  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
-  renderer.setSize(innerWidth, innerHeight);
-  renderer.setClearColor(0x060503, 1);
-
-  const scene  = new THREE.Scene();
-  scene.fog    = new THREE.FogExp2(0x060503, 0.022);
-  const camera = new THREE.PerspectiveCamera(65, innerWidth / innerHeight, 0.1, 200);
-  camera.position.set(0, 0, 32);
-
-  const N   = 140, nPos = new Float32Array(N*3), nCol = new Float32Array(N*3), pts = [];
-  const PAL = [0xC9A84C,0xFFD700,0xB8860B,0xE8C060,0xA07828].map(c=>new THREE.Color(c));
-
-  for (let i = 0; i < N; i++) {
-    const r=10+Math.random()*14, t=Math.random()*Math.PI*2, p=Math.acos(2*Math.random()-1);
-    const x=r*Math.sin(p)*Math.cos(t), y=r*Math.sin(p)*Math.sin(t)*0.75, z=r*Math.cos(p);
-    nPos[i*3]=x; nPos[i*3+1]=y; nPos[i*3+2]=z; pts.push(new THREE.Vector3(x,y,z));
-    const c=PAL[Math.floor(Math.random()*PAL.length)].clone().multiplyScalar(0.5+Math.random()*0.5);
-    nCol[i*3]=c.r; nCol[i*3+1]=c.g; nCol[i*3+2]=c.b;
-  }
-  const nGeo = new THREE.BufferGeometry();
-  nGeo.setAttribute('position', new THREE.BufferAttribute(nPos,3));
-  nGeo.setAttribute('color',    new THREE.BufferAttribute(nCol,3));
-  const nMat = new THREE.PointsMaterial({ size:.22, vertexColors:true, transparent:true, opacity:.9, blending:THREE.AdditiveBlending, depthWrite:false });
-  scene.add(new THREE.Points(nGeo, nMat));
-
-  const ePos=[], eCol=[];
-  for (let i=0;i<N;i++) for (let j=i+1;j<N;j++) {
-    const d=pts[i].distanceTo(pts[j]);
-    if (d<9) {
-      const a=(1-d/9)*0.6;
-      ePos.push(pts[i].x,pts[i].y,pts[i].z,pts[j].x,pts[j].y,pts[j].z);
-      const gc=new THREE.Color(0xC9A84C);
-      eCol.push(gc.r*a,gc.g*a,gc.b*a,gc.r*a*.3,gc.g*a*.3,gc.b*a*.3);
-    }
-  }
-  const eGeo=new THREE.BufferGeometry();
-  eGeo.setAttribute('position',new THREE.Float32BufferAttribute(ePos,3));
-  eGeo.setAttribute('color',new THREE.Float32BufferAttribute(eCol,3));
-  const eMat=new THREE.LineBasicMaterial({ vertexColors:true, transparent:true, opacity:.5, blending:THREE.AdditiveBlending, depthWrite:false });
-  const edges=new THREE.LineSegments(eGeo,eMat);
-  scene.add(edges);
-
-  let mx=0,my=0,frame=0;
-  document.addEventListener('mousemove',e=>{mx=(e.clientX/innerWidth-.5)*2;my=(e.clientY/innerHeight-.5)*2;});
-  window.addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
-
-  (function animate(){
-    requestAnimationFrame(animate); frame++;
-    const t=frame*.003;
-    edges.rotation.y=t*.08; edges.rotation.x=Math.sin(t*.4)*.04;
-    eMat.opacity=.3+.2*Math.sin(t*1.2); nMat.opacity=.7+.25*Math.sin(t*.8+1);
-    camera.position.x+=(mx*2-camera.position.x)*.025;
-    camera.position.y+=(-my*1.5-camera.position.y)*.025;
-    camera.lookAt(0,0,0);
-    renderer.render(scene,camera);
-  })();
+/* theme — shared 'theme' key with the app */
+function setThemeIcon(t){
+  document.getElementById('themeIcon').innerHTML = t === 'dark'
+    ? '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>'
+    : '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>';
+}
+(function(){
+  const saved = localStorage.getItem('theme');
+  const t = saved || (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+  document.documentElement.setAttribute('data-theme', t); setThemeIcon(t);
 })();
+document.getElementById('themeBtn').onclick = () => {
+  const n = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', n); localStorage.setItem('theme', n); setThemeIcon(n);
+};
 
-/* ═══════════════════ STRENGTH METER ═══════════════════ */
+/* strength meter (unchanged behavior) */
 const COLORS = ['#f87171','#f87171','#fbbf24','#4ade80','#4ade80'];
 const LABELS = ['Too short','Weak','Fair','Strong','Very strong'];
-
-function score(pw) {
+function score(pw){
   if (pw.length < 8) return 0;
   let s = 1;
-  if (pw.length >= 12)          s++;
-  if (/[A-Z]/.test(pw))         s++;
-  if (/[0-9]/.test(pw))         s++;
-  if (/[^A-Za-z0-9]/.test(pw))  s++;
+  if (pw.length >= 12)         s++;
+  if (/[A-Z]/.test(pw))        s++;
+  if (/[0-9]/.test(pw))        s++;
+  if (/[^A-Za-z0-9]/.test(pw)) s++;
   return Math.min(s, 4);
 }
-
-document.getElementById('password').addEventListener('input', function () {
+document.getElementById('password').addEventListener('input', function(){
   const s = score(this.value);
   const fill = document.getElementById('strFill');
   const hint = document.getElementById('strHint');
-  fill.style.width      = this.value ? `${(s/4)*100}%` : '0';
+  fill.style.width = this.value ? `${(s/4)*100}%` : '0';
   fill.style.background = COLORS[s];
-  hint.textContent      = this.value ? LABELS[s] : '';
-  hint.style.color      = COLORS[s];
+  hint.textContent = this.value ? LABELS[s] : '';
+  hint.style.color = COLORS[s];
 });
 
-/* ═══════════════════ EYE TOGGLE ═══════════════════ */
-document.getElementById('eyeBtn').addEventListener('click', function () {
+/* eye toggle */
+document.getElementById('eyeBtn').addEventListener('click', function(){
   const inp = document.getElementById('password');
   inp.type = inp.type === 'password' ? 'text' : 'password';
   this.innerHTML = inp.type === 'text'
-    ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>`
-    : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`;
+    ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>'
+    : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
 });
 
-/* ═══════════════════ FORM SUBMIT ═══════════════════ */
-document.getElementById('regForm').addEventListener('submit', async function (e) {
+/* submit (unchanged behavior) */
+document.getElementById('regForm').addEventListener('submit', async function(e){
   e.preventDefault();
   const btn = document.getElementById('submitBtn');
   const err = document.getElementById('errBox');
@@ -337,33 +264,31 @@ document.getElementById('regForm').addEventListener('submit', async function (e)
   btn.innerHTML = '<span class="spin"></span>Creating account…';
 
   const payload = {
-    email:     document.getElementById('email').value.trim(),
-    password:  document.getElementById('password').value,
+    email: document.getElementById('email').value.trim(),
+    password: document.getElementById('password').value,
     full_name: document.getElementById('fullName').value.trim() || null,
   };
 
   try {
-    const res  = await fetch('/auth/register', {
+    const res = await fetch('/auth/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
     const data = await res.json();
     if (!res.ok) {
-      const msg = Array.isArray(data.detail)
-        ? data.detail.map(d => d.msg).join(', ')
-        : (data.detail || 'Registration failed');
+      const msg = Array.isArray(data.detail) ? data.detail.map(d => d.msg).join(', ') : (data.detail || 'Registration failed');
       throw new Error(msg);
     }
-    localStorage.setItem('access_token',  data.access_token);
+    localStorage.setItem('access_token', data.access_token);
     localStorage.setItem('refresh_token', data.refresh_token);
     const name = encodeURIComponent(payload.full_name || payload.email || '');
     window.location.href = `/welcome?access_token=${data.access_token}&refresh_token=${data.refresh_token}&provider=email&name=${name}`;
   } catch (ex) {
     err.textContent = ex.message;
     err.classList.add('show');
-    btn.disabled    = false;
-    btn.textContent = 'Create Account';
+    btn.disabled = false;
+    btn.textContent = 'Create account';
   }
 });
 </script>

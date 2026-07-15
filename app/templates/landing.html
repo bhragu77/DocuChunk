@@ -1,379 +1,487 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>DocuChunk — AI Document Intelligence Platform</title>
-  <meta name="description" content="Transform PDF and DOCX documents into searchable knowledge with intelligent chunking, semantic embeddings, and RAG-powered answers." />
+  <title>DocuChunk — Retrieval-Augmented Document Intelligence</title>
+  <meta name="description" content="Turn your documents into a private, searchable knowledge base. Hybrid semantic retrieval, cross-encoder reranking, and grounded, cited answers — a full RAG platform for interacting with your documents precisely and in context." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/static/css/style.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+
+    /* ── Product design tokens (shared with the app + login) ── */
+    :root, :root[data-theme="dark"] {
+      --bg:#04070f; --bg-1:#070c18; --bg-2:#0c1220; --bg-card:#0f1826; --bg-hover:#131e2e;
+      --b:rgba(30,90,180,0.22); --b-hi:rgba(0,170,255,0.4);
+      --cyan:#00C8FF; --cyan-dim:rgba(0,200,255,0.09); --cyan-glow:rgba(0,200,255,0.18);
+      --blue:#0055FF; --text:#D8E8FF; --text2:#6888AA; --text3:#2A4060;
+      --green:#37E2A0; --yellow:#FFC24D; --red:#FF6B7D;
+      --hero-grad:radial-gradient(90% 80% at 15% 0%, rgba(0,85,255,0.22), transparent 55%),
+                  radial-gradient(80% 80% at 90% 10%, rgba(0,200,255,0.16), transparent 55%);
+      --grid:rgba(120,170,255,0.045); --nav-bg:rgba(6,11,22,0.72);
+    }
+    :root[data-theme="light"] {
+      --bg:#eef3fb; --bg-1:#ffffff; --bg-2:#f4f7fc; --bg-card:#ffffff; --bg-hover:#eaf1fb;
+      --b:rgba(20,80,160,0.16); --b-hi:rgba(0,120,220,0.4);
+      --cyan:#0091c8; --cyan-dim:rgba(0,145,200,0.10); --cyan-glow:rgba(0,145,200,0.15);
+      --blue:#0055FF; --text:#0c1a2e; --text2:#546b86; --text3:#a7bad2;
+      --green:#0a9d6e; --yellow:#c98a00; --red:#d63a4e;
+      --hero-grad:radial-gradient(90% 80% at 15% 0%, rgba(0,85,255,0.10), transparent 55%),
+                  radial-gradient(80% 80% at 90% 10%, rgba(0,150,210,0.10), transparent 55%);
+      --grid:rgba(20,80,160,0.05); --nav-bg:rgba(255,255,255,0.75);
+    }
+
+    html { scroll-behavior:smooth; }
+    body { background:var(--bg); color:var(--text); font-family:'Inter',-apple-system,sans-serif;
+      -webkit-font-smoothing:antialiased; line-height:1.55; overflow-x:hidden; }
+    a { color:inherit; text-decoration:none; }
+    .container { max-width:1180px; margin:0 auto; padding:0 24px; }
+    .accent { background:linear-gradient(135deg,var(--cyan),#4d9bff); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; }
+    .mono { font-family:'JetBrains Mono',monospace; }
+
+    .badge { display:inline-flex; align-items:center; gap:7px; font-size:0.72rem; font-weight:600;
+      letter-spacing:0.06em; text-transform:uppercase; color:var(--cyan);
+      background:var(--cyan-dim); border:1px solid var(--b-hi); padding:5px 12px; border-radius:999px; }
+    .badge .dot { width:6px; height:6px; border-radius:50%; background:var(--cyan); box-shadow:0 0 8px var(--cyan); }
+
+    .btn { display:inline-flex; align-items:center; justify-content:center; gap:8px;
+      font-size:0.88rem; font-weight:600; padding:10px 18px; border-radius:10px; cursor:pointer;
+      transition:.18s; border:1px solid transparent; white-space:nowrap; }
+    .btn-primary { background:linear-gradient(135deg,var(--blue),var(--cyan)); color:#fff; background-size:160% 100%; }
+    .btn-primary:hover { background-position:right center; transform:translateY(-1px); box-shadow:0 10px 26px rgba(0,120,255,0.38); }
+    .btn-ghost { background:transparent; border-color:var(--b); color:var(--text); }
+    .btn-ghost:hover { border-color:var(--b-hi); background:var(--bg-hover); }
+    .btn-lg { padding:13px 24px; font-size:0.95rem; }
+
+    /* ══════════ NAV ══════════ */
+    .nav { position:sticky; top:0; z-index:50; backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
+      background:var(--nav-bg); border-bottom:1px solid var(--b); }
+    .nav-inner { max-width:1180px; margin:0 auto; padding:0 24px; height:62px; display:flex; align-items:center; gap:20px; }
+    .nav-logo { display:flex; align-items:center; gap:10px; font-weight:800; font-size:1.05rem; }
+    .logo-box { width:30px; height:30px; border-radius:8px; background:linear-gradient(135deg,var(--blue),var(--cyan));
+      display:grid; place-items:center; font-weight:800; color:#fff; font-size:14px; box-shadow:0 4px 14px rgba(0,120,255,0.4); }
+    .nav-links { display:flex; gap:26px; margin-left:18px; }
+    .nav-links a { font-size:0.88rem; color:var(--text2); font-weight:500; transition:color .15s; }
+    .nav-links a:hover { color:var(--text); }
+    .nav-actions { margin-left:auto; display:flex; align-items:center; gap:10px; }
+    .theme-btn { width:38px; height:38px; border-radius:10px; background:var(--bg-card); border:1px solid var(--b);
+      color:var(--text2); display:grid; place-items:center; cursor:pointer; transition:.15s; }
+    .theme-btn:hover { color:var(--cyan); border-color:var(--b-hi); }
+    .theme-btn svg { width:17px; height:17px; }
+    .nav-toggle { display:none; background:none; border:none; color:var(--text); cursor:pointer; flex-direction:column; gap:5px; padding:6px; }
+    .nav-toggle span { width:20px; height:2px; background:currentColor; border-radius:2px; }
+
+    /* ══════════ HERO ══════════ */
+    .hero { position:relative; padding:70px 0 60px; overflow:hidden; }
+    .hero::before { content:''; position:absolute; inset:0; background:var(--hero-grad); pointer-events:none; }
+    .hero::after { content:''; position:absolute; inset:0; pointer-events:none;
+      background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);
+      background-size:38px 38px; mask-image:radial-gradient(80% 60% at 40% 0%,#000,transparent 80%); }
+    .hero-inner { position:relative; z-index:1; display:grid; grid-template-columns:1.05fr 0.95fr; gap:52px; align-items:center; }
+    .hero-title { font-size:3rem; line-height:1.08; font-weight:800; letter-spacing:-0.035em; margin:20px 0 18px; }
+    .hero-sub { font-size:1.08rem; color:var(--text2); max-width:52ch; }
+    .hero-actions { display:flex; gap:12px; margin-top:28px; flex-wrap:wrap; }
+    .hero-meta { display:flex; gap:26px; margin-top:34px; }
+    .hero-meta-num { font-size:1.4rem; font-weight:800; }
+    .hero-meta-label { font-size:0.75rem; color:var(--text2); margin-top:2px; }
+    .hero-divider { width:1px; background:var(--b); }
+
+    /* Hero visual — an "answer with citations" card over an embedding cluster */
+    .hero-visual { position:relative; }
+    .cluster { width:100%; height:auto; display:block; opacity:.9; }
+    .answer-card { position:absolute; left:8%; right:8%; bottom:6%; background:var(--bg-card);
+      border:1px solid var(--b); border-radius:14px; padding:16px 18px; box-shadow:0 24px 60px rgba(0,0,0,0.35); }
+    .ac-q { font-size:0.82rem; color:var(--text2); margin-bottom:8px; }
+    .ac-a { font-size:0.9rem; line-height:1.5; }
+    .ac-cite { color:var(--cyan); font-weight:600; font-size:0.78rem; }
+    .ac-chip { display:inline-flex; align-items:center; gap:5px; margin-top:12px; font-size:0.72rem; font-weight:600;
+      color:var(--green); background:rgba(55,226,160,0.1); border:1px solid rgba(55,226,160,0.3); padding:3px 9px; border-radius:999px; }
+
+    /* ══════════ STAT STRIP ══════════ */
+    .strip { border-top:1px solid var(--b); border-bottom:1px solid var(--b); background:var(--bg-1); }
+    .strip-inner { display:grid; grid-template-columns:repeat(4,1fr); }
+    .strip-item { padding:26px 20px; text-align:center; border-right:1px solid var(--b); }
+    .strip-item:last-child { border-right:none; }
+    .strip-num { font-size:1.5rem; font-weight:800; }
+    .strip-label { font-size:0.78rem; color:var(--text2); margin-top:4px; }
+
+    /* ══════════ SECTIONS ══════════ */
+    .section { padding:84px 0; }
+    .sec-head { text-align:center; max-width:640px; margin:0 auto 48px; }
+    .sec-title { font-size:2.1rem; font-weight:800; letter-spacing:-0.03em; margin:16px 0 12px; }
+    .sec-sub { color:var(--text2); font-size:1.02rem; }
+
+    .feat-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:18px; }
+    .fcard { background:var(--bg-card); border:1px solid var(--b); border-radius:16px; padding:26px 24px; transition:.2s; }
+    .fcard:hover { border-color:var(--b-hi); transform:translateY(-3px); box-shadow:0 18px 40px rgba(0,0,0,0.22); }
+    .ficon { width:44px; height:44px; border-radius:11px; background:var(--cyan-dim); border:1px solid var(--b-hi);
+      color:var(--cyan); display:grid; place-items:center; margin-bottom:16px; }
+    .ficon svg { width:21px; height:21px; }
+    .ftitle { font-size:1.05rem; font-weight:700; margin-bottom:7px; }
+    .fdesc { font-size:0.9rem; color:var(--text2); line-height:1.55; }
+
+    /* pipeline */
+    .steps { display:grid; grid-template-columns:repeat(3,1fr); gap:18px; }
+    .step { background:var(--bg-card); border:1px solid var(--b); border-radius:16px; padding:24px; position:relative; }
+    .step-num { font-family:'JetBrains Mono',monospace; font-size:0.8rem; font-weight:600; color:var(--cyan);
+      background:var(--cyan-dim); border:1px solid var(--b-hi); width:38px; height:26px; display:grid; place-items:center; border-radius:7px; }
+    .step-title { font-size:1rem; font-weight:700; margin:14px 0 7px; }
+    .step-desc { font-size:0.88rem; color:var(--text2); line-height:1.55; }
+    .step-tag { display:inline-block; margin-top:12px; font-family:'JetBrains Mono',monospace; font-size:0.72rem;
+      color:var(--text2); background:var(--bg-2); border:1px solid var(--b); padding:3px 8px; border-radius:6px; }
+
+    /* privacy band */
+    .privacy { background:var(--bg-1); border-top:1px solid var(--b); border-bottom:1px solid var(--b); }
+    .privacy-inner { display:grid; grid-template-columns:1fr 1fr; gap:40px; align-items:center; padding:64px 0; }
+    .priv-list { display:flex; flex-direction:column; gap:14px; margin-top:22px; }
+    .priv-row { display:flex; gap:12px; align-items:flex-start; }
+    .priv-check { width:26px; height:26px; border-radius:8px; background:rgba(55,226,160,0.12); border:1px solid rgba(55,226,160,0.32);
+      color:var(--green); display:grid; place-items:center; flex-shrink:0; }
+    .priv-check svg { width:14px; height:14px; }
+    .priv-t { font-size:0.92rem; font-weight:600; }
+    .priv-d { font-size:0.84rem; color:var(--text2); }
+    .priv-visual { background:var(--bg-card); border:1px solid var(--b); border-radius:18px; padding:28px; }
+
+    /* tech stack */
+    .tech-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; }
+    .tcard { background:var(--bg-card); border:1px solid var(--b); border-radius:13px; padding:20px; text-align:center; transition:.18s; }
+    .tcard:hover { border-color:var(--b-hi); }
+    .tname { font-weight:700; font-size:0.95rem; }
+    .trole { font-size:0.76rem; color:var(--text2); margin-top:3px; }
+
+    /* CTA */
+    .cta { text-align:center; background:
+        radial-gradient(90% 120% at 50% 0%, rgba(0,120,255,0.18), transparent 60%); border-radius:24px;
+      border:1px solid var(--b); padding:64px 24px; margin:0 24px; }
+    .cta-title { font-size:2.2rem; font-weight:800; letter-spacing:-0.03em; margin-bottom:14px; }
+    .cta-sub { color:var(--text2); max-width:52ch; margin:0 auto 28px; }
+    .cta-actions { display:flex; gap:12px; justify-content:center; flex-wrap:wrap; }
+
+    /* footer */
+    .footer { border-top:1px solid var(--b); padding:48px 0 30px; margin-top:80px; }
+    .footer-top { display:grid; grid-template-columns:2fr 1fr 1fr 1fr; gap:30px; margin-bottom:34px; }
+    .footer-desc { color:var(--text2); font-size:0.88rem; margin-top:12px; max-width:34ch; }
+    .footer-col-title { font-size:0.78rem; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--text2); margin-bottom:14px; }
+    .footer-links { display:flex; flex-direction:column; gap:9px; }
+    .footer-links a { font-size:0.88rem; color:var(--text2); transition:color .15s; }
+    .footer-links a:hover { color:var(--cyan); }
+    .footer-bottom { display:flex; justify-content:space-between; align-items:center; padding-top:24px;
+      border-top:1px solid var(--b); font-size:0.8rem; color:var(--text2); flex-wrap:wrap; gap:10px; }
+
+    /* reveal */
+    .reveal { opacity:0; transform:translateY(18px); transition:opacity .6s ease, transform .6s ease; }
+    .reveal.in { opacity:1; transform:none; }
+
+    /* ── Responsive ── */
+    @media (max-width:900px) {
+      .hero-inner { grid-template-columns:1fr; gap:36px; }
+      .hero-visual { order:-1; max-width:460px; }
+      .feat-grid, .steps { grid-template-columns:repeat(2,1fr); }
+      .tech-grid { grid-template-columns:repeat(2,1fr); }
+      .privacy-inner { grid-template-columns:1fr; }
+      .strip-inner { grid-template-columns:repeat(2,1fr); }
+      .strip-item:nth-child(2) { border-right:none; }
+      .footer-top { grid-template-columns:1fr 1fr; }
+      .nav-links, .nav-actions .btn { display:none; }
+      .nav-toggle { display:flex; }
+      .nav-links.open { display:flex; position:absolute; top:62px; left:0; right:0; flex-direction:column; gap:0;
+        background:var(--bg-1); border-bottom:1px solid var(--b); padding:8px 24px; margin:0; }
+      .nav-links.open a { padding:12px 0; border-bottom:1px solid var(--b); }
+      .nav-links.open .nav-mobile-cta { display:flex; gap:10px; padding:14px 0; }
+      .nav-links.open .nav-mobile-cta .btn { display:inline-flex; flex:1; }
+    }
+    @media (min-width:901px) { .nav-mobile-cta { display:none; } }
+    @media (max-width:560px) {
+      .hero-title { font-size:2.2rem; } .sec-title, .cta-title { font-size:1.7rem; }
+      .feat-grid, .steps, .tech-grid { grid-template-columns:1fr; }
+      .hero-meta { flex-wrap:wrap; gap:18px; }
+    }
+  </style>
 </head>
 <body>
 
-<!-- ── Navigation ─────────────────────────────────────────────────────────── -->
-<nav class="nav" id="nav">
+<!-- ══════════ NAV ══════════ -->
+<nav class="nav">
   <div class="nav-inner">
-    <a href="/" class="nav-logo">
-      <div class="nav-logo-icon">D</div>
-      <span class="gold-text">DocuChunk</span>
-    </a>
+    <a href="/" class="nav-logo"><div class="logo-box">D</div>DocuChunk</a>
     <div class="nav-links" id="navLinks">
       <a href="#features">Features</a>
-      <a href="#how-it-works">How It Works</a>
-      <a href="#tech-stack">Tech Stack</a>
-      <!-- Mobile-only CTA buttons inside the dropdown -->
+      <a href="#how">How it works</a>
+      <a href="#privacy">Privacy</a>
+      <a href="#stack">Stack</a>
       <div class="nav-mobile-cta">
-        <a href="/login"    class="btn btn-ghost">Sign In</a>
-        <a href="/register" class="btn btn-gold">Get Started Free</a>
+        <a href="/login" class="btn btn-ghost">Sign in</a>
+        <a href="/register" class="btn btn-primary">Get started</a>
       </div>
     </div>
     <div class="nav-actions">
-      <a href="/login"    class="btn btn-ghost">Sign In</a>
-      <a href="/register" class="btn btn-gold">Get Started Free</a>
+      <button class="theme-btn" id="themeBtn" title="Toggle theme" aria-label="Toggle theme">
+        <svg id="themeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+      </button>
+      <a href="/login" class="btn btn-ghost">Sign in</a>
+      <a href="/register" class="btn btn-primary">Get started</a>
     </div>
-    <button class="nav-toggle" id="navToggle" aria-label="Toggle menu">
-      <span></span><span></span><span></span>
-    </button>
+    <button class="nav-toggle" id="navToggle" aria-label="Menu"><span></span><span></span><span></span></button>
   </div>
 </nav>
 
-<!-- ── Hero ───────────────────────────────────────────────────────────────── -->
+<!-- ══════════ HERO ══════════ -->
 <section class="hero">
-  <div class="hero-bg"></div>
-  <div class="hero-grid"></div>
-  <div class="hero-content">
-    <div class="hero-text">
-      <div class="hero-badge badge">
-        AI-Powered Document Intelligence
-      </div>
-      <h1 class="hero-title">
-        Turn Documents Into<br />
-        <span class="gold-text">Searchable Knowledge</span>
-      </h1>
+  <div class="container hero-inner">
+    <div>
+      <span class="badge"><span class="dot"></span>Retrieval-Augmented Document Intelligence</span>
+      <h1 class="hero-title">Talk to your documents.<br /><span class="accent">Get answers you can trust.</span></h1>
       <p class="hero-sub">
-        Upload any PDF or DOCX. DocuChunk parses, chunks, embeds, and indexes
-        your documents so you can search semantically and get AI-powered answers
-        — all in one production-grade platform.
+        DocuChunk is a full RAG platform for interacting with your documents precisely and
+        in context. Upload a file, ask in plain language, and get a grounded, cited answer —
+        backed by hybrid semantic retrieval, cross-encoder reranking, and source-level
+        verification. Your data stays private to your workspace.
       </p>
       <div class="hero-actions">
-        <a href="/register" class="btn btn-gold btn-lg">
-          <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-          Start for Free
+        <a href="/register" class="btn btn-primary btn-lg">
+          <svg width="17" height="17" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+          Start free
         </a>
-        <a href="#how-it-works" class="btn btn-outline btn-lg">See How It Works</a>
+        <a href="#how" class="btn btn-ghost btn-lg">See how it works</a>
       </div>
       <div class="hero-meta">
-        <div class="hero-meta-item">
-          <div class="hero-meta-num">3</div>
-          <div class="hero-meta-label">Chunking Strategies</div>
-        </div>
+        <div><div class="hero-meta-num accent">Hybrid</div><div class="hero-meta-label">Dense + BM25 retrieval</div></div>
         <div class="hero-divider"></div>
-        <div class="hero-meta-item">
-          <div class="hero-meta-num">384</div>
-          <div class="hero-meta-label">Embedding Dimensions</div>
-        </div>
+        <div><div class="hero-meta-num accent">Cited</div><div class="hero-meta-label">Every claim traced to source</div></div>
         <div class="hero-divider"></div>
-        <div class="hero-meta-item">
-          <div class="hero-meta-num">100%</div>
-          <div class="hero-meta-label">Free to Run</div>
-        </div>
+        <div><div class="hero-meta-num accent">Private</div><div class="hero-meta-label">Per-user isolation</div></div>
       </div>
     </div>
 
     <div class="hero-visual">
-      <div class="pipeline-card">
-        <div class="pipeline-card-title">Pipeline Status</div>
-        <div class="pipeline-step">
-          <div class="pipeline-step-icon">📄</div>
-          <div>
-            <div class="pipeline-step-label">Document Uploaded</div>
-            <div class="pipeline-step-sub">research_paper.pdf · 2.4 MB</div>
-          </div>
-        </div>
-        <div class="pipeline-step">
-          <div class="pipeline-step-icon">🔍</div>
-          <div>
-            <div class="pipeline-step-label">Parsed &amp; Cleaned</div>
-            <div class="pipeline-step-sub">28 pages · 94,312 characters</div>
-          </div>
-        </div>
-        <div class="pipeline-step active">
-          <div class="pipeline-step-icon">✂️</div>
-          <div>
-            <div class="pipeline-step-label">Chunking…</div>
-            <div class="pipeline-step-sub">Sentence-aware · 512 tokens</div>
-          </div>
-        </div>
-        <div class="pipeline-step">
-          <div class="pipeline-step-icon">🧠</div>
-          <div>
-            <div class="pipeline-step-label">Embedding Generation</div>
-            <div class="pipeline-step-sub">all-MiniLM-L6-v2 · 384-dim</div>
-          </div>
-        </div>
-        <div class="pipeline-step">
-          <div class="pipeline-step-icon">🗄️</div>
-          <div>
-            <div class="pipeline-step-label">Stored in ChromaDB</div>
-            <div class="pipeline-step-sub">HNSW index · &lt;10ms retrieval</div>
-          </div>
-        </div>
-        <div class="pipeline-progress">
-          <div class="progress-label">
-            <span>Processing…</span>
-            <span class="gold-text">68%</span>
-          </div>
-          <div class="progress-bar">
-            <div class="progress-fill"></div>
-          </div>
-        </div>
+      <!-- Embedding cluster (nods to the UMAP visualiser) -->
+      <svg class="cluster" viewBox="0 0 460 360" role="img" aria-label="Embedding cluster visualisation">
+        <defs>
+          <radialGradient id="g1" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stop-color="var(--cyan)" stop-opacity="0.9"/><stop offset="100%" stop-color="var(--cyan)" stop-opacity="0"/>
+          </radialGradient>
+        </defs>
+        <g stroke="var(--b-hi)" stroke-width="1" opacity="0.5">
+          <line x1="120" y1="90" x2="180" y2="130"/><line x1="180" y1="130" x2="140" y2="180"/>
+          <line x1="180" y1="130" x2="250" y2="120"/><line x1="250" y1="120" x2="320" y2="160"/>
+          <line x1="320" y1="160" x2="300" y2="230"/><line x1="300" y1="230" x2="230" y2="250"/>
+          <line x1="230" y1="250" x2="140" y2="180"/><line x1="250" y1="120" x2="300" y2="230"/>
+        </g>
+        <g>
+          <circle cx="120" cy="90"  r="7"  fill="var(--blue)"/>
+          <circle cx="180" cy="130" r="10" fill="var(--cyan)"/>
+          <circle cx="140" cy="180" r="6"  fill="var(--blue)"/>
+          <circle cx="250" cy="120" r="8"  fill="var(--cyan)"/>
+          <circle cx="320" cy="160" r="7"  fill="var(--green)"/>
+          <circle cx="300" cy="230" r="9"  fill="var(--cyan)"/>
+          <circle cx="230" cy="250" r="6"  fill="var(--blue)"/>
+          <circle cx="380" cy="110" r="5"  fill="var(--text3)"/>
+          <circle cx="90"  cy="230" r="5"  fill="var(--text3)"/>
+          <circle cx="360" cy="250" r="5"  fill="var(--text3)"/>
+        </g>
+        <circle cx="250" cy="120" r="46" fill="url(#g1)" opacity="0.35"/>
+      </svg>
+      <div class="answer-card">
+        <div class="ac-q">“Which elf is the accountant, and who supervises the fudge shoppe?”</div>
+        <div class="ac-a">Flo works as the accountant <span class="ac-cite">[1]</span>, while Zack supervises the fudge shoppe <span class="ac-cite">[2]</span>.</div>
+        <span class="ac-chip">✓ Grounded &amp; verified</span>
       </div>
     </div>
   </div>
 </section>
 
-<!-- ── Stats Strip ─────────────────────────────────────────────────────────── -->
-<div class="stats-strip">
-  <div class="stats-inner">
-    <div class="stat-item">
-      <div class="stat-num">PDF + DOCX</div>
-      <div class="stat-label">Supported Formats</div>
-    </div>
-    <div class="stat-item">
-      <div class="stat-num">3</div>
-      <div class="stat-label">Chunking Strategies</div>
-    </div>
-    <div class="stat-item">
-      <div class="stat-num">&lt;10ms</div>
-      <div class="stat-label">Vector Search Latency</div>
-    </div>
-    <div class="stat-item">
-      <div class="stat-num">100% Free</div>
-      <div class="stat-label">Using HuggingFace Free Tier</div>
-    </div>
-  </div>
+<!-- ══════════ STAT STRIP ══════════ -->
+<div class="strip">
+  <div class="container"><div class="strip-inner">
+    <div class="strip-item"><div class="strip-num">PDF · DOCX</div><div class="strip-label">Supported formats</div></div>
+    <div class="strip-item"><div class="strip-num accent">384-dim</div><div class="strip-label">Semantic embeddings</div></div>
+    <div class="strip-item"><div class="strip-num accent">&lt;10ms</div><div class="strip-label">Vector retrieval</div></div>
+    <div class="strip-item"><div class="strip-num accent">Cited</div><div class="strip-label">Grounded answers</div></div>
+  </div></div>
 </div>
 
-<!-- ── Features ───────────────────────────────────────────────────────────── -->
+<!-- ══════════ FEATURES ══════════ -->
 <section class="section" id="features">
   <div class="container">
-    <div class="features-header fade-up">
-      <div class="badge">Platform Features</div>
-      <h2 class="section-title">Everything You Need for<br /><span class="gold-text">Document Intelligence</span></h2>
-      <p class="section-sub">From raw PDF to semantic search in minutes. Every layer built for production — and designed for learning.</p>
+    <div class="sec-head reveal">
+      <span class="badge">Capabilities</span>
+      <h2 class="sec-title">A complete retrieval &amp; reasoning stack</h2>
+      <p class="sec-sub">Every layer from raw file to trustworthy answer — engineered, not glued together.</p>
     </div>
-    <div class="features-grid">
-      <div class="feature-card fade-up">
-        <div class="feature-icon">📄</div>
-        <h3 class="feature-title">Smart Document Parsing</h3>
-        <p class="feature-desc">Deep extraction from PDF and DOCX files. Preserves page numbers, handles tables, fixes hyphenated line breaks, strips headers and footers automatically.</p>
+    <div class="feat-grid">
+      <div class="fcard reveal">
+        <div class="ficon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div>
+        <div class="ftitle">Hybrid semantic search</div>
+        <div class="fdesc">Dense vector similarity fused with BM25 keyword matching via Reciprocal Rank Fusion — so exact entity names and fuzzy meaning both surface the right passage.</div>
       </div>
-      <div class="feature-card fade-up">
-        <div class="feature-icon">✂️</div>
-        <h3 class="feature-title">Custom Chunking Engine</h3>
-        <p class="feature-desc">Three built-in strategies: fixed-size, sentence-aware, and paragraph-based. Configure chunk size and overlap per document. Compare results with the analyser.</p>
+      <div class="fcard reveal">
+        <div class="ficon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h12"/></svg></div>
+        <div class="ftitle">Cross-encoder reranking</div>
+        <div class="fdesc">A joint (query, passage) reranker re-scores candidates to reject topically-similar but wrong-entity matches — the precision layer bi-encoders miss.</div>
       </div>
-      <div class="feature-card fade-up">
-        <div class="feature-icon">🧠</div>
-        <h3 class="feature-title">Semantic Embeddings</h3>
-        <p class="feature-desc">Powered by HuggingFace's all-MiniLM-L6-v2 — a 384-dimension sentence transformer that captures meaning, not just keywords. Free API tier included.</p>
+      <div class="fcard reveal">
+        <div class="ficon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></div>
+        <div class="ftitle">Grounded &amp; cited answers</div>
+        <div class="fdesc">Every claim carries a [n] citation to its source passage, and a separate verification pass checks the answer against the sources — no silent hallucinations.</div>
       </div>
-      <div class="feature-card fade-up">
-        <div class="feature-icon">🗄️</div>
-        <h3 class="feature-title">ChromaDB Vector Store</h3>
-        <p class="feature-desc">HNSW-indexed vector storage for sub-10ms retrieval. Collections are isolated per user. Embeddings persist on disk across restarts.</p>
+      <div class="fcard reveal">
+        <div class="ficon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></div>
+        <div class="ftitle">Scope-aware answers</div>
+        <div class="fdesc">Ask for a fact, a full list, a table, a classification, or a summary — the router adapts retrieval to the question, reading the whole document when the answer spans it.</div>
       </div>
-      <div class="feature-card fade-up">
-        <div class="feature-icon">🔎</div>
-        <h3 class="feature-title">Semantic Search API</h3>
-        <p class="feature-desc">Query in natural language. Returns top-K chunks ranked by cosine similarity with source page citations. Filter by document, status, or date range.</p>
+      <div class="fcard reveal">
+        <div class="ficon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="9" r="2.5"/><circle cx="9" cy="18" r="2.5"/><line x1="8" y1="7" x2="16" y2="9"/><line x1="7.5" y1="8" x2="8.5" y2="16"/></svg></div>
+        <div class="ftitle">Embedding visualiser</div>
+        <div class="fdesc">A UMAP-projected 2D map shows how your chunks cluster in embedding space — inspect any chunk's vector and its nearest neighbours to understand retrieval.</div>
       </div>
-      <div class="feature-card fade-up">
-        <div class="feature-icon">📊</div>
-        <h3 class="feature-title">Debug Visualisation</h3>
-        <p class="feature-desc">UMAP-projected 2D embedding plots reveal how your chunks cluster. Inspect any chunk's raw vector. See cosine similarity to nearest neighbours.</p>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- ── How It Works ───────────────────────────────────────────────────────── -->
-<section class="section pipeline-section" id="how-it-works">
-  <div class="container">
-    <div class="features-header fade-up">
-      <div class="badge">Pipeline</div>
-      <h2 class="section-title">From Upload to Answer<br /><span class="gold-text">in Six Steps</span></h2>
-      <p class="section-sub">Every step runs automatically after upload. Watch the status update in real time.</p>
-    </div>
-    <div class="steps-container">
-      <div class="step-card fade-up">
-        <div class="step-num">01</div>
-        <h3 class="step-title">Upload Document</h3>
-        <p class="step-desc">Drag and drop any PDF or DOCX. Max 20 MB. File is saved to your private storage bucket with a UUID filename — no path traversal risk.</p>
-        <span class="step-tag">POST /docs/upload</span>
-      </div>
-      <div class="step-card fade-up">
-        <div class="step-num">02</div>
-        <h3 class="step-title">Parse &amp; Clean</h3>
-        <p class="step-desc">PyMuPDF extracts text page by page. The cleaner fixes unicode ligatures, hyphenated breaks, page number noise, and excessive whitespace.</p>
-        <span class="step-tag">Background Task</span>
-      </div>
-      <div class="step-card fade-up">
-        <div class="step-num">03</div>
-        <h3 class="step-title">Intelligent Chunking</h3>
-        <p class="step-desc">Your custom chunker splits text into overlapping segments. Choose between fixed, sentence-aware, or paragraph strategies. Tune size and overlap.</p>
-        <span class="step-tag">GET /chunks/analyse</span>
-      </div>
-      <div class="step-card fade-up">
-        <div class="step-num">04</div>
-        <h3 class="step-title">Generate Embeddings</h3>
-        <p class="step-desc">Each chunk is encoded into a 384-dimension vector via HuggingFace free API. Batched in groups of 32 with exponential backoff retry.</p>
-        <span class="step-tag">POST /embed/trigger</span>
-      </div>
-      <div class="step-card fade-up">
-        <div class="step-num">05</div>
-        <h3 class="step-title">Store in ChromaDB</h3>
-        <p class="step-desc">Vectors are upserted into your personal HNSW index. Each entry carries full metadata: page, chunk index, strategy, token count.</p>
-        <span class="step-tag">ChromaDB HNSW</span>
-      </div>
-      <div class="step-card fade-up">
-        <div class="step-num">06</div>
-        <h3 class="step-title">Search &amp; Generate</h3>
-        <p class="step-desc">Query in plain English. Top-K relevant chunks are retrieved by cosine similarity and fed to an LLM for a cited, grounded answer.</p>
-        <span class="step-tag">POST /generate/answer</span>
+      <div class="fcard reveal">
+        <div class="ficon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4v16h16"/><path d="M4 14l5-5 4 4 6-7"/></svg></div>
+        <div class="ftitle">Streaming, in-context chat</div>
+        <div class="fdesc">Answers stream token-by-token, then a trust signal (confidence + citations) lands a moment later. Ask follow-ups in a conversation tied to the document.</div>
       </div>
     </div>
   </div>
 </section>
 
-<!-- ── Tech Stack ──────────────────────────────────────────────────────────── -->
-<section class="section" id="tech-stack">
+<!-- ══════════ HOW IT WORKS ══════════ -->
+<section class="section" id="how" style="background:var(--bg-1);border-top:1px solid var(--b);border-bottom:1px solid var(--b)">
   <div class="container">
-    <div class="features-header fade-up">
-      <div class="badge">Open Stack</div>
-      <h2 class="section-title">Built on Best-in-Class<br /><span class="gold-text">Free &amp; Open Tools</span></h2>
-      <p class="section-sub">No vendor lock-in. Every component can be self-hosted or swapped out as you scale.</p>
+    <div class="sec-head reveal">
+      <span class="badge">Pipeline</span>
+      <h2 class="sec-title">From upload to grounded answer</h2>
+      <p class="sec-sub">Ingestion runs automatically in the background; retrieval and generation run on every question.</p>
+    </div>
+    <div class="steps">
+      <div class="step reveal"><div class="step-num">01</div><div class="step-title">Parse &amp; clean</div><div class="step-desc">Text is extracted page-by-page, then normalised — ligatures fixed, hyphenated breaks joined, header/footer noise stripped.</div><span class="step-tag">background worker</span></div>
+      <div class="step reveal"><div class="step-num">02</div><div class="step-title">Chunk with overlap</div><div class="step-desc">Sentence-aware chunking with overlap and stored character offsets, so answers that straddle a boundary can be stitched back together.</div><span class="step-tag">sentence-aware</span></div>
+      <div class="step reveal"><div class="step-num">03</div><div class="step-title">Embed &amp; index</div><div class="step-desc">Each chunk becomes a 384-dim vector (all-MiniLM-L6-v2), stored in an HNSW index and mirrored in a per-user keyword index.</div><span class="step-tag">ChromaDB · BM25</span></div>
+      <div class="step reveal"><div class="step-num">04</div><div class="step-title">Retrieve &amp; rerank</div><div class="step-desc">Hybrid retrieval fuses dense + keyword hits with RRF, then a cross-encoder reranks to the passages that truly answer the query.</div><span class="step-tag">RRF · cross-encoder</span></div>
+      <div class="step reveal"><div class="step-num">05</div><div class="step-title">Generate with citations</div><div class="step-desc">The reranked passages are assembled into a grounded prompt; the model answers in its own words with inline [n] citations.</div><span class="step-tag">grounded prompt</span></div>
+      <div class="step reveal"><div class="step-num">06</div><div class="step-title">Verify &amp; score</div><div class="step-desc">A separate pass checks each claim against its cited source and returns a confidence breakdown — retrieval, citation coverage, groundedness.</div><span class="step-tag">verification</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════ PRIVACY ══════════ -->
+<section class="privacy" id="privacy">
+  <div class="container privacy-inner">
+    <div class="reveal">
+      <span class="badge">Private by design</span>
+      <h2 class="sec-title" style="text-align:left;margin-top:16px">Your documents stay yours</h2>
+      <p class="sec-sub" style="text-align:left">DocuChunk is built around isolation and traceability — not a black box you have to trust blindly.</p>
+      <div class="priv-list">
+        <div class="priv-row"><div class="priv-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></div><div><div class="priv-t">Per-user isolation</div><div class="priv-d">Each account gets its own vector collection and keyword index — retrieval never crosses users.</div></div></div>
+        <div class="priv-row"><div class="priv-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></div><div><div class="priv-t">Self-hostable stack</div><div class="priv-d">Runs entirely on open components you control — no vendor lock-in, deployable on your own box.</div></div></div>
+        <div class="priv-row"><div class="priv-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></div><div><div class="priv-t">Traceable answers</div><div class="priv-d">Every answer links back to the exact source passage and page, so you can verify it yourself.</div></div></div>
+        <div class="priv-row"><div class="priv-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></div><div><div class="priv-t">Secure auth</div><div class="priv-d">JWT sessions, bcrypt-hashed passwords, TLS in transit, optional OAuth sign-in.</div></div></div>
+      </div>
+    </div>
+    <div class="priv-visual reveal">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+        <div class="ficon" style="margin:0"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
+        <div><div style="font-weight:700">Workspace: yours only</div><div class="mono" style="font-size:.76rem;color:var(--text2)">collection: user_•••  ·  isolated</div></div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div style="display:flex;justify-content:space-between;font-size:.85rem;padding:10px 12px;background:var(--bg-2);border:1px solid var(--b);border-radius:9px"><span>quarterly_report.pdf</span><span class="mono" style="color:var(--green)">indexed</span></div>
+        <div style="display:flex;justify-content:space-between;font-size:.85rem;padding:10px 12px;background:var(--bg-2);border:1px solid var(--b);border-radius:9px"><span>contract_v3.docx</span><span class="mono" style="color:var(--green)">indexed</span></div>
+        <div style="display:flex;justify-content:space-between;font-size:.85rem;padding:10px 12px;background:var(--bg-2);border:1px solid var(--b);border-radius:9px"><span>research_notes.pdf</span><span class="mono" style="color:var(--cyan)">processing…</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════ TECH STACK ══════════ -->
+<section class="section" id="stack">
+  <div class="container">
+    <div class="sec-head reveal">
+      <span class="badge">Open stack</span>
+      <h2 class="sec-title">Built on best-in-class open tools</h2>
+      <p class="sec-sub">Every component is open and swappable — deploy it your way.</p>
     </div>
     <div class="tech-grid">
-      <div class="tech-card fade-up">
-        <div class="tech-icon">⚡</div>
-        <div class="tech-name">FastAPI</div>
-        <div class="tech-role">Web Framework</div>
-      </div>
-      <div class="tech-card fade-up">
-        <div class="tech-icon">🎨</div>
-        <div class="tech-name">ChromaDB</div>
-        <div class="tech-role">Vector Database</div>
-      </div>
-      <div class="tech-card fade-up">
-        <div class="tech-icon">🤗</div>
-        <div class="tech-name">HuggingFace</div>
-        <div class="tech-role">Free Embeddings API</div>
-      </div>
-      <div class="tech-card fade-up">
-        <div class="tech-icon">📄</div>
-        <div class="tech-name">PyMuPDF</div>
-        <div class="tech-role">PDF Parsing</div>
-      </div>
-      <div class="tech-card fade-up">
-        <div class="tech-icon">🔐</div>
-        <div class="tech-name">JWT + OAuth</div>
-        <div class="tech-role">Authentication</div>
-      </div>
-      <div class="tech-card fade-up">
-        <div class="tech-icon">🗃️</div>
-        <div class="tech-name">SQLAlchemy</div>
-        <div class="tech-role">ORM + SQLite/Postgres</div>
-      </div>
-      <div class="tech-card fade-up">
-        <div class="tech-icon">📐</div>
-        <div class="tech-name">UMAP</div>
-        <div class="tech-role">Embedding Visualisation</div>
-      </div>
-      <div class="tech-card fade-up">
-        <div class="tech-icon">🧪</div>
-        <div class="tech-name">Pytest</div>
-        <div class="tech-role">Test Suite</div>
-      </div>
+      <div class="tcard reveal"><div class="tname">FastAPI</div><div class="trole">API framework</div></div>
+      <div class="tcard reveal"><div class="tname">ChromaDB</div><div class="trole">Vector store · HNSW</div></div>
+      <div class="tcard reveal"><div class="tname">Sentence-Transformers</div><div class="trole">Embeddings · MiniLM</div></div>
+      <div class="tcard reveal"><div class="tname">Cross-Encoder</div><div class="trole">Reranking</div></div>
+      <div class="tcard reveal"><div class="tname">Gemini</div><div class="trole">Grounded generation</div></div>
+      <div class="tcard reveal"><div class="tname">UMAP</div><div class="trole">Embedding visualiser</div></div>
+      <div class="tcard reveal"><div class="tname">PyMuPDF</div><div class="trole">Document parsing</div></div>
+      <div class="tcard reveal"><div class="tname">JWT · OAuth</div><div class="trole">Authentication</div></div>
     </div>
   </div>
 </section>
 
-<!-- ── CTA ─────────────────────────────────────────────────────────────────── -->
-<section class="section cta-section">
+<!-- ══════════ CTA ══════════ -->
+<section style="padding:40px 0 20px">
   <div class="container">
-    <div class="cta-inner fade-up">
-      <div class="badge" style="margin: 0 auto 24px;">Ready to Build?</div>
-      <h2 class="cta-title">
-        Start Learning RAG<br />
-        <span class="gold-text">While Building Real Software</span>
-      </h2>
-      <p class="cta-sub">
-        Create your free account and upload your first document in under 60 seconds.
-        Watch every pipeline stage run in real time and inspect what happens at each layer.
-      </p>
+    <div class="cta reveal">
+      <span class="badge">Get started</span>
+      <h2 class="cta-title" style="margin-top:18px">Put your documents to work</h2>
+      <p class="cta-sub">Create a free account, upload a file, and ask your first question in under a minute — with grounded, cited answers from the start.</p>
       <div class="cta-actions">
-        <a href="/register" class="btn btn-gold btn-lg">Create Free Account</a>
-        <a href="/api/docs" class="btn btn-outline btn-lg" target="_blank">Explore API Docs</a>
+        <a href="/register" class="btn btn-primary btn-lg">Create free account</a>
+        <a href="/login" class="btn btn-ghost btn-lg">Sign in</a>
       </div>
     </div>
   </div>
 </section>
 
-<!-- ── Footer ──────────────────────────────────────────────────────────────── -->
+<!-- ══════════ FOOTER ══════════ -->
 <footer class="footer">
-  <div class="footer-inner">
+  <div class="container">
     <div class="footer-top">
       <div>
-        <div class="footer-brand-name">
-          <div class="nav-logo-icon">D</div>
-          <span class="gold-text">DocuChunk</span>
-        </div>
-        <p class="footer-brand-desc">
-          A production-grade RAG platform built for learning.
-          Understand every layer — from bytes to answers.
-        </p>
+        <a href="/" class="nav-logo"><div class="logo-box">D</div>DocuChunk</a>
+        <p class="footer-desc">A full RAG platform for interacting with your documents precisely, in context, and privately.</p>
       </div>
       <div>
-        <div class="footer-col-title">Platform</div>
-        <div class="footer-links">
-          <a href="/register">Get Started</a>
-          <a href="/login">Sign In</a>
-          <a href="/dashboard">Dashboard</a>
-          <a href="/api/docs">API Docs</a>
-        </div>
+        <div class="footer-col-title">Product</div>
+        <div class="footer-links"><a href="/register">Get started</a><a href="/login">Sign in</a><a href="/dashboard">Dashboard</a></div>
       </div>
       <div>
-        <div class="footer-col-title">Pipeline</div>
-        <div class="footer-links">
-          <a href="#how-it-works">How It Works</a>
-          <a href="#features">Features</a>
-          <a href="#tech-stack">Tech Stack</a>
-        </div>
+        <div class="footer-col-title">Explore</div>
+        <div class="footer-links"><a href="#features">Features</a><a href="#how">How it works</a><a href="#privacy">Privacy</a><a href="#stack">Stack</a></div>
       </div>
       <div>
-        <div class="footer-col-title">Learn</div>
-        <div class="footer-links">
-          <a href="/api/docs" target="_blank">REST API Reference</a>
-          <a href="/api/redoc" target="_blank">ReDoc</a>
-          <a href="https://docs.trychroma.com" target="_blank">ChromaDB Docs</a>
-          <a href="https://huggingface.co" target="_blank">HuggingFace</a>
-        </div>
+        <div class="footer-col-title">Developers</div>
+        <div class="footer-links"><a href="/api/docs" target="_blank">API reference</a><a href="/api/redoc" target="_blank">ReDoc</a></div>
       </div>
     </div>
     <div class="footer-bottom">
-      <span>© 2026 DocuChunk. Built for learning, designed for production.</span>
-      <div class="footer-bottom-links">
-        <a href="/api/docs">API</a>
-        <a href="#">Privacy</a>
-        <a href="#">Terms</a>
-      </div>
+      <span>© 2026 DocuChunk · Retrieval-Augmented Document Intelligence</span>
+      <div style="display:flex;gap:18px"><a href="/api/docs">API</a><a href="#privacy">Privacy</a></div>
     </div>
   </div>
 </footer>
 
-<script src="/static/js/app.js"></script>
+<script>
+/* theme — shared 'theme' key with the app */
+function setThemeIcon(t){
+  document.getElementById('themeIcon').innerHTML = t === 'dark'
+    ? '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>'
+    : '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>';
+}
+(function(){
+  const saved = localStorage.getItem('theme');
+  const t = saved || (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+  document.documentElement.setAttribute('data-theme', t); setThemeIcon(t);
+})();
+document.getElementById('themeBtn').onclick = () => {
+  const n = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', n); localStorage.setItem('theme', n); setThemeIcon(n);
+};
+
+/* mobile nav */
+document.getElementById('navToggle').onclick = () => document.getElementById('navLinks').classList.toggle('open');
+document.querySelectorAll('#navLinks a').forEach(a => a.addEventListener('click', () => document.getElementById('navLinks').classList.remove('open')));
+
+/* scroll reveal */
+const io = new IntersectionObserver((entries) => {
+  entries.forEach(e => { if (e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target); } });
+}, { threshold:0.12 });
+document.querySelectorAll('.reveal').forEach(el => io.observe(el));
+</script>
 </body>
 </html>
