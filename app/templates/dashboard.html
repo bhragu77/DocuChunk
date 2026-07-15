@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -11,7 +11,7 @@
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     html, body { height: 100%; }
 
-    :root {
+    :root, :root[data-theme="dark"] {
       --bg:         #04070f;
       --bg-1:       #070c18;
       --bg-2:       #0c1220;
@@ -26,8 +26,29 @@
       --text:       #D8E8FF;
       --text2:      #6888AA;
       --text3:      #2A4060;
+      --green:      #37E2A0;
+      --red:        #FF6B7D;
       --r:          10px;
       --rl:         16px;
+    }
+    /* Light theme — mirrors the chat route's palette so the two pages match. */
+    :root[data-theme="light"] {
+      --bg:         #eef3fb;
+      --bg-1:       #ffffff;
+      --bg-2:       #f4f7fc;
+      --bg-card:    #ffffff;
+      --bg-hover:   #eaf1fb;
+      --b:          rgba(20,80,160,0.16);
+      --b-hi:       rgba(0,120,220,0.4);
+      --cyan:       #0091c8;
+      --cyan-dim:   rgba(0,145,200,0.10);
+      --cyan-glow:  rgba(0,145,200,0.15);
+      --blue:       #0055FF;
+      --text:       #0c1a2e;
+      --text2:      #546b86;
+      --text3:      #a7bad2;
+      --green:      #0a9d6e;
+      --red:        #d63a4e;
     }
 
     body {
@@ -155,6 +176,21 @@
     }
     .sb-logout svg { width: 14px; height: 14px; }
     .sb-logout:hover { color: #f87171; background: rgba(248,113,113,0.07); }
+
+    /* theme toggle — same row style as sign-out, cyan hover */
+    .sb-theme {
+      display: flex; align-items: center; gap: 9px;
+      padding: 8px 10px; border-radius: 8px;
+      font-size: 0.78rem; color: var(--text2);
+      cursor: pointer; transition: all 0.18s; margin-bottom: 2px;
+    }
+    .sb-theme svg { width: 15px; height: 15px; }
+    .sb-theme:hover { color: var(--cyan); background: var(--cyan-dim); }
+    /* mobile top-nav icon variant */
+    .mob-theme { background: none; border: none; color: var(--text2); display: grid; place-items: center;
+      width: 34px; height: 34px; border-radius: 8px; cursor: pointer; }
+    .mob-theme:hover { color: var(--cyan); }
+    .mob-theme svg { width: 18px; height: 18px; }
 
     /* ═══════════════════ MAIN ═══════════════════ */
     .main {
@@ -470,6 +506,69 @@
     }
     @keyframes spin { to { transform: rotate(360deg); } }
 
+    /* ── Search: document preview (LEFT) + results (RIGHT), side by side ──
+       The preview is a FIXED-WIDTH panel on the left (like the chat route's fixed
+       panels); the results take the remaining space. `order` places the preview
+       first visually without reordering the markup. */
+    /* App-shell: the heading ("Semantic Search") + search bar stay PINNED
+       (flex-shrink:0); only the results column scrolls internally, and the preview
+       is a fixed-height panel. The search view itself is exactly one viewport tall,
+       so the page never scrolls here and the PDF preview never scrolls it. */
+    #searchView { display: flex; flex-direction: column; height: calc(100vh - 72px); height: calc(100dvh - 72px); }
+    #searchView .ph { flex-shrink: 0; }
+    .search-bar { flex-shrink: 0; }
+    .search-layout { display: flex; gap: 18px; align-items: stretch; flex: 1 1 auto; min-height: 0; }
+    .search-results-col { flex: 1 1 auto; min-width: 0; min-height: 0; overflow-y: auto; order: 2; padding-right: 2px; }
+    .sv-preview { order: 1; min-height: 0; }
+    .res-card { cursor: pointer; }
+    .res-card.active { border-color: var(--b-hi); box-shadow: 0 0 0 1px var(--b-hi); }
+    .res-preview-hint { display: inline-flex; align-items: center; gap: 5px; font-size: 0.72rem;
+      color: var(--cyan); opacity: 0; transition: opacity .15s; margin-left: 4px; }
+    .res-card:hover .res-preview-hint { opacity: 1; }
+
+    /* Desktop: a fixed-width preview column on the LEFT (see the app-shell rules
+       below for how its height is pinned so it never scrolls the page). */
+    .sv-preview {
+      flex: 0 0 420px;
+      background: var(--bg-1); border: 1px solid var(--b); border-radius: var(--rl);
+      display: flex; flex-direction: column; overflow: hidden;
+    }
+    .sv-pv-head { height: 52px; flex-shrink: 0; border-bottom: 1px solid var(--b);
+      display: flex; align-items: center; gap: 10px; padding: 0 14px; }
+    .sv-pv-name { font-weight: 600; font-size: 0.85rem; overflow: hidden; text-overflow: ellipsis;
+      white-space: nowrap; min-width: 0; }
+    .sv-pv-page { font-size: 0.72rem; color: var(--text2); background: var(--cyan-dim);
+      border: 1px solid var(--b); padding: 2px 9px; border-radius: 999px; flex-shrink: 0; }
+    .sv-pv-close { margin-left: auto; width: 30px; height: 30px; border-radius: 8px; border: 1px solid var(--b);
+      background: var(--bg-2); color: var(--text2); place-items: center; flex-shrink: 0; display: none; }
+    .sv-pv-close:hover { color: var(--cyan); border-color: var(--b-hi); }
+    .sv-pv-body { flex: 1; background: var(--bg-2); position: relative; }
+    .sv-pv-body iframe { width: 100%; height: 100%; border: none; background: #fff; }
+    .sv-pv-empty, .sv-pv-fallback { position: absolute; inset: 0; display: grid; place-items: center;
+      text-align: center; color: var(--text2); padding: 24px; font-size: 0.82rem; }
+    .sv-pv-empty svg { width: 34px; height: 34px; opacity: .5; margin-bottom: 10px; }
+    .sv-pv-empty a, .sv-pv-fallback a { color: var(--cyan); }
+    .sv-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 60; display: none; }
+
+    /* Below 1100px: the preview becomes a slide-in drawer (tap a result to open).
+       display:none when closed (not translated off-screen, which would create a
+       horizontal scrollbar). */
+    @media (max-width: 1100px) {
+      .sv-preview {
+        position: fixed; top: 0; right: 0; height: 100vh; height: 100dvh;
+        width: min(460px, 92vw); max-width: 100vw;
+        border: none; border-left: 1px solid var(--b); border-radius: 0; z-index: 61;
+        flex: none; display: none;
+      }
+      .sv-preview.open { display: flex; animation: svSlideIn .25s ease; }
+      @keyframes svSlideIn { from { transform: translateX(100%); } to { transform: none; } }
+      .sv-overlay.show { display: block; }
+      .sv-pv-close { display: grid; }
+      .search-layout { overflow-x: hidden; }
+      /* Mobile main has a top nav bar (80px) + 24px bottom padding. */
+      #searchView { height: calc(100vh - 104px); height: calc(100dvh - 104px); }
+    }
+
     /* ── Toast ── */
     .toast {
       position: fixed;
@@ -627,6 +726,77 @@
       tbody td:nth-child(4) { display: none; }
       .td-fname { max-width: 100px; }
     }
+
+    /* ── Profile popup (in-dashboard modal, replaces the old /profile route) ── */
+    :root { --green:#37E2A0; --red:#FF6B7D; }
+    .pf-overlay { position:fixed; inset:0; background:rgba(0,0,0,.62); z-index:200; display:none;
+      align-items:center; justify-content:center; padding:20px; backdrop-filter:blur(2px); }
+    .pf-overlay.show { display:flex; }
+
+    /* ── Confirm dialog (a designed replacement for window.confirm) ── */
+    .confirm-card { width:400px; max-width:calc(100vw - 32px); text-align:center;
+      padding:28px 26px 22px; animation:cfIn .2s ease; }
+    @keyframes cfIn { from { opacity:0; transform:scale(.96) translateY(6px); } to { opacity:1; transform:none; } }
+    .confirm-ico { width:54px; height:54px; border-radius:15px; margin:0 auto 16px; display:grid; place-items:center;
+      background:rgba(248,113,113,0.12); border:1px solid rgba(248,113,113,0.32); color:#f87171; }
+    .confirm-ico svg { width:26px; height:26px; }
+    .confirm-title { font-size:1.15rem; font-weight:800; letter-spacing:-0.01em; margin-bottom:8px; }
+    .confirm-msg { font-size:0.88rem; color:var(--text2); line-height:1.55; margin-bottom:22px; }
+    .confirm-msg b { color:var(--text); font-weight:600; word-break:break-word; }
+    .confirm-actions { display:flex; gap:10px; }
+    .cf-btn { flex:1; padding:11px 14px; border-radius:10px; font-size:0.9rem; font-weight:600; cursor:pointer; transition:.15s; }
+    .cf-cancel { background:var(--bg-2); color:var(--text); border:1px solid var(--b); }
+    .cf-cancel:hover { border-color:var(--b-hi); background:var(--bg-hover); }
+    .cf-danger { background:linear-gradient(135deg,#e0384e,#f87171); color:#fff; border:none; }
+    .cf-danger:hover { filter:brightness(1.07); box-shadow:0 8px 22px rgba(224,56,78,0.38); }
+    .cf-danger:disabled { opacity:.6; cursor:not-allowed; box-shadow:none; }
+    .pf-card { width:460px; max-width:100%; max-height:90vh; overflow-y:auto; background:var(--bg-card);
+      border:1px solid var(--b); border-radius:var(--rl); padding:26px 24px; text-align:center; position:relative; }
+    .pf-close { position:absolute; top:14px; right:14px; width:30px; height:30px; border-radius:8px; border:1px solid var(--b);
+      background:var(--bg-2); color:var(--text2); display:grid; place-items:center; cursor:pointer; }
+    .pf-close:hover { color:var(--cyan); border-color:var(--b-hi); }
+    .pf-avatar-big { width:96px; height:96px; border-radius:24px; margin:0 auto 8px; overflow:hidden; position:relative;
+      border:2px solid var(--b-hi); cursor:pointer; background:var(--bg-2); }
+    .pf-avatar-big img { width:100%; height:100%; display:block; }
+    .pf-avatar-edit { position:absolute; inset:auto 0 0 0; background:rgba(0,0,0,.55); color:#fff; font-size:10.5px;
+      padding:4px 0; display:flex; align-items:center; justify-content:center; gap:5px; }
+    .pf-name { font-size:20px; font-weight:700; margin-top:6px; }
+    .pf-email-row { display:flex; align-items:center; justify-content:center; gap:8px; color:var(--text2); font-size:13.5px; margin-top:5px; }
+    .pf-link-btn { background:none; border:none; color:var(--cyan); font-size:12px; font-weight:600; cursor:pointer; }
+    .pf-link-btn:hover { text-decoration:underline; }
+    .pf-section { text-align:left; margin-top:22px; border-top:1px solid var(--b); padding-top:18px; }
+    .pf-section h4 { font-size:11.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--text2); margin-bottom:12px; }
+    .pf-field { margin-bottom:12px; }
+    .pf-field label { display:block; font-size:12px; color:var(--text2); margin-bottom:5px; }
+    .pf-card input[type=text], .pf-card input[type=email], .pf-card input[type=password] {
+      width:100%; padding:10px 12px; background:var(--bg-2); border:1px solid var(--b); border-radius:var(--r);
+      color:var(--text); font-family:inherit; font-size:14px; outline:none; }
+    .pf-card input:focus { border-color:var(--b-hi); }
+    .pf-btn-row { display:flex; gap:8px; margin-top:6px; }
+    .pf-btn { padding:9px 16px; border-radius:var(--r); font-size:13px; font-weight:600; border:1px solid var(--b);
+      background:var(--bg-2); color:var(--text); cursor:pointer; }
+    .pf-btn.primary { background:var(--blue); border-color:var(--blue); color:#fff; }
+    .pf-btn.primary:hover { background:var(--cyan); border-color:var(--cyan); }
+    .pf-btn:hover { border-color:var(--b-hi); }
+    .pf-collapsed { display:none; }
+    .pf-revealer { width:100%; padding:11px; border:1px dashed var(--b); border-radius:var(--r); background:transparent;
+      color:var(--text2); font-size:13px; display:flex; align-items:center; justify-content:center; gap:8px; cursor:pointer; }
+    .pf-revealer:hover { color:var(--cyan); border-color:var(--b-hi); }
+    .pf-note { font-size:11px; color:var(--text3); margin-top:8px; }
+    /* avatar picker (nested) */
+    .pf-picker-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-top:6px; }
+    .pf-opt { aspect-ratio:1; border-radius:14px; overflow:hidden; cursor:pointer; border:2px solid transparent; background:var(--bg-2); }
+    .pf-opt img { width:100%; height:100%; display:block; }
+    .pf-opt:hover { border-color:var(--b-hi); }
+    .pf-opt.selected { border-color:var(--cyan); box-shadow:0 0 0 3px var(--cyan-glow); }
+    .pf-toast { position:fixed; bottom:22px; left:50%; transform:translateX(-50%) translateY(20px); background:var(--bg-card);
+      border:1px solid var(--green); color:var(--green); padding:11px 18px; border-radius:var(--r); font-size:13px;
+      opacity:0; transition:.3s; z-index:210; pointer-events:none; }
+    .pf-toast.show { opacity:1; transform:translateX(-50%); }
+    /* sidebar avatar can now hold an <img> */
+    .sb-avatar img, .mob-avatar img { width:100%; height:100%; display:block; border-radius:inherit; }
+    .sb-avatar, .mob-avatar { overflow:hidden; }
+    @media (max-width:520px){ .pf-picker-grid { grid-template-columns:repeat(4,1fr); } }
   </style>
 </head>
 <body>
@@ -640,11 +810,30 @@
     <div class="sb-logo-box">D</div>
     <span class="sb-logo-name">DocuChunk</span>
   </div>
+  <div style="flex:1"></div>
+  <button class="mob-theme" id="mobThemeToggle" aria-label="Toggle light/dark theme" title="Toggle theme">
+    <svg id="mobThemeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"></svg>
+  </button>
   <div class="mob-avatar" id="mobAvatar">?</div>
 </nav>
 
 <!-- Drawer overlay -->
 <div class="overlay" id="overlay"></div>
+
+<!-- Confirm dialog (replaces window.confirm for a designed, on-brand alert) -->
+<div class="pf-overlay" id="confirmOverlay">
+  <div class="pf-card confirm-card" role="alertdialog" aria-modal="true" aria-labelledby="confirmTitle" aria-describedby="confirmMsg">
+    <div class="confirm-ico">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/><path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/></svg>
+    </div>
+    <h3 class="confirm-title" id="confirmTitle">Delete document?</h3>
+    <p class="confirm-msg" id="confirmMsg"></p>
+    <div class="confirm-actions">
+      <button class="cf-btn cf-cancel" id="confirmCancel" type="button">Cancel</button>
+      <button class="cf-btn cf-danger" id="confirmOk" type="button">Delete</button>
+    </div>
+  </div>
+</div>
 
 <!-- ═════════════ SIDEBAR ═════════════ -->
 <aside class="sidebar" id="sidebar">
@@ -667,6 +856,12 @@
     </svg>
     Semantic Search
   </div>
+  <a class="sb-item" href="/chat" id="sb-chat">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+    </svg>
+    Chat with Document
+  </a>
 
   <div class="sb-section">Analysis</div>
   <div class="sb-item" id="sb-analyse">
@@ -701,7 +896,11 @@
   <div class="sb-fill"></div>
 
   <div class="sb-bottom">
-    <div class="sb-user-card">
+    <div class="sb-theme" id="themeToggle" role="button" tabindex="0" aria-label="Toggle light/dark theme" title="Toggle theme">
+      <svg id="themeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"></svg>
+      <span id="themeLabel">Light mode</span>
+    </div>
+    <div class="sb-user-card" onclick="openProfile()" style="cursor:pointer" title="Open profile">
       <div class="sb-avatar" id="userAvatar">?</div>
       <div class="sb-user-info">
         <div class="sb-user-name"  id="userName">Loading…</div>
@@ -818,16 +1017,40 @@
       <button id="searchBtn" class="sh-btn search-go">Search</button>
     </div>
 
-    <div id="searchResults">
-      <div class="empty">
-        <div class="empty-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-          </svg>
+    <div class="search-layout">
+      <div class="search-results-col">
+        <div id="searchResults">
+          <div class="empty">
+            <div class="empty-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+              </svg>
+            </div>
+            <div class="empty-h">Search your knowledge base</div>
+            <div class="empty-p">Type a query above and hit Search to retrieve the most relevant chunks.</div>
+          </div>
         </div>
-        <div class="empty-h">Search your knowledge base</div>
-        <div class="empty-p">Type a query above and hit Search to retrieve the most relevant chunks.</div>
       </div>
+
+      <!-- Document preview: sticky beside the results on desktop, a slide-in drawer on mobile -->
+      <aside class="sv-preview" id="svPreview" aria-label="Document preview">
+        <div class="sv-pv-head">
+          <svg viewBox="0 0 24 24" fill="none" stroke="var(--cyan)" stroke-width="2" style="width:15px;height:15px;flex-shrink:0"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          <span class="sv-pv-name" id="svPvName">Document preview</span>
+          <span class="sv-pv-page" id="svPvPage" style="display:none"></span>
+          <button class="sv-pv-close" id="svPvClose" aria-label="Close preview">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+        <div class="sv-pv-body" id="svPvBody">
+          <div class="sv-pv-empty" id="svPvEmpty">
+            <div>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+              <div>Run a search — the top result's document opens here.<br>Click any result to preview its page.</div>
+            </div>
+          </div>
+        </div>
+      </aside>
     </div>
 
   </div><!-- /#searchView -->
@@ -909,17 +1132,50 @@ function apiFetch(path, opts = {}) {
   });
 }
 
+/* ── Theme (light/dark) — same behaviour + localStorage key as the chat route,
+      so the choice is shared across both pages. ── */
+function setThemeIcon(t) {
+  const sun = '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>';
+  const moon = '<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>';
+  const icon = t === 'dark' ? sun : moon;          // dark active → offer the sun (switch to light)
+  const label = t === 'dark' ? 'Light mode' : 'Dark mode';
+  const ti = document.getElementById('themeIcon'); if (ti) ti.innerHTML = icon;
+  const mti = document.getElementById('mobThemeIcon'); if (mti) mti.innerHTML = icon;
+  const tl = document.getElementById('themeLabel'); if (tl) tl.textContent = label;
+}
+(function () {
+  const t = localStorage.getItem('theme') || 'dark';
+  document.documentElement.setAttribute('data-theme', t);
+  setThemeIcon(t);
+})();
+function toggleTheme() {
+  const n = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', n);
+  localStorage.setItem('theme', n);
+  setThemeIcon(n);
+}
+document.getElementById('themeToggle').addEventListener('click', toggleTheme);
+document.getElementById('themeToggle').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleTheme(); }
+});
+document.getElementById('mobThemeToggle').addEventListener('click', toggleTheme);
+
 /* ── User info ── */
 apiFetch('/auth/me')
-  .then(r => { if (!r.ok) throw new Error(); return r.json(); })
+  .then(r => { if (!r.ok) throw new Error('unauthorized'); return r.json(); })
+  .catch(() => { window.location.href = '/login'; })   // ONLY a real auth failure logs out
   .then(u => {
-    const initial = (u.full_name || u.email || '?')[0].toUpperCase();
-    document.getElementById('userAvatar').textContent = initial;
-    document.getElementById('mobAvatar').textContent  = initial;
-    document.getElementById('userName').textContent   = u.full_name || u.email;
-    document.getElementById('userEmail').textContent  = u.email;
-  })
-  .catch(() => { window.location.href = '/login'; });
+    if (!u) return;
+    // UI rendering is wrapped so a render error can NEVER trigger the logout above.
+    try {
+      const initial = (u.full_name || u.email || '?')[0].toUpperCase();
+      document.getElementById('userAvatar').textContent = initial;
+      document.getElementById('mobAvatar').textContent  = initial;
+      document.getElementById('userName').textContent   = u.full_name || u.email;
+      document.getElementById('userEmail').textContent  = u.email;
+      if (typeof pfApplySidebarAvatar === 'function') pfApplySidebarAvatar();
+    } catch (e) { console.error('profile render error (non-fatal):', e); }
+  });
 
 /* ── Helpers ── */
 const pillClass = s => ({ ready:'p-ready', uploaded:'p-uploaded', parsing:'p-parsing', chunking:'p-chunking', embedding:'p-embedding', failed:'p-failed' }[s] || 'p-uploaded');
@@ -989,7 +1245,7 @@ async function loadDocs() {
                 </span>
               </td>
               <td class="mono">${fmtDate(d.created_at)}</td>
-              <td><button class="abtn del" onclick="deleteDoc('${d.id}')">Delete</button></td>
+              <td><button class="abtn del" data-id="${d.id}" data-name="${escapeHtml(d.original_filename)}" onclick="deleteDoc(this)">Delete</button></td>
             </tr>`).join('')}
         </tbody>
       </table>`;
@@ -1065,10 +1321,63 @@ function pollStatus(id) {
   }, 2000);
 }
 
-async function deleteDoc(id) {
-  if (!confirm('Delete this document and all its chunks?')) return;
-  await apiFetch('/docs/' + id, { method: 'DELETE' });
-  loadDocs();
+/* Promise-based confirm dialog — resolves true (confirmed) / false (cancelled).
+   Backdrop click, Cancel, and Escape all cancel; Enter confirms. */
+function confirmDialog({ title = 'Are you sure?', message = '', confirmText = 'Delete' } = {}) {
+  return new Promise(resolve => {
+    const ov = document.getElementById('confirmOverlay');
+    const ok = document.getElementById('confirmOk');
+    const cancel = document.getElementById('confirmCancel');
+    document.getElementById('confirmTitle').textContent = title;
+    document.getElementById('confirmMsg').innerHTML = message;
+    ok.textContent = confirmText;
+    function done(val) {
+      ov.classList.remove('show');
+      ok.removeEventListener('click', onOk);
+      cancel.removeEventListener('click', onCancel);
+      ov.removeEventListener('click', onBackdrop);
+      document.removeEventListener('keydown', onKey);
+      resolve(val);
+    }
+    function onOk() { done(true); }
+    function onCancel() { done(false); }
+    function onBackdrop(e) { if (e.target === ov) done(false); }
+    function onKey(e) { if (e.key === 'Escape') done(false); else if (e.key === 'Enter') done(true); }
+    ok.addEventListener('click', onOk);
+    cancel.addEventListener('click', onCancel);
+    ov.addEventListener('click', onBackdrop);
+    document.addEventListener('keydown', onKey);
+    ov.classList.add('show');
+    ok.focus();
+  });
+}
+
+async function deleteDoc(btn) {
+  const id = btn.dataset.id;
+  const name = btn.dataset.name || 'this document';
+  const ok = await confirmDialog({
+    title: 'Delete document?',
+    message: `This permanently removes <b>${escapeHtml(name)}</b> and all its chunks, embeddings, and chat sources. This can’t be undone.`,
+    confirmText: 'Delete',
+  });
+  if (!ok) return;
+
+  btn.disabled = true;
+  try {
+    const res = await apiFetch('/docs/' + id, { method: 'DELETE' });
+    if (!res.ok) {
+      let detail = 'Delete failed';
+      try { detail = (await res.json()).detail || detail; } catch (e) {}
+      throw new Error(detail);
+    }
+    toast('Document deleted', name, 100, '#4ade80');   // verified success
+    hideToast();
+    await loadDocs();                                   // refresh the list
+  } catch (ex) {
+    toast('Delete failed', ex.message || 'Please try again', 0, '#f87171');
+    hideToast();
+    btn.disabled = false;
+  }
 }
 
 document.getElementById('logoutBtn').addEventListener('click', () => {
@@ -1078,7 +1387,7 @@ document.getElementById('logoutBtn').addEventListener('click', () => {
 /* ── View switching (Documents · Search · Analyser · Embeddings · Visualise) ── */
 const VIEWS = {
   docs:      { view: 'docsView',     nav: 'sb-docs' },
-  search:    { view: 'searchView',   nav: 'sb-search',    onShow: () => { populateSearchDocs(); document.getElementById('searchQuery').focus(); } },
+  search:    { view: 'searchView',   nav: 'sb-search', display: 'flex', onShow: () => { populateSearchDocs(); document.getElementById('searchQuery').focus(); } },
   analyse:   { view: 'analyseView',  nav: 'sb-analyse',   onShow: () => populateAnalysisDocs('analyseDoc') },
   embed:     { view: 'embedView',    nav: 'sb-embed',     onShow: () => populateAnalysisDocs('embedDoc') },
   visualise: { view: 'vizView',      nav: 'sb-visualise', onShow: () => populateAnalysisDocs('vizDoc') },
@@ -1087,7 +1396,7 @@ const VIEWS = {
 function showView(which) {
   Object.entries(VIEWS).forEach(([key, cfg]) => {
     const active = key === which;
-    document.getElementById(cfg.view).style.display = active ? 'block' : 'none';
+    document.getElementById(cfg.view).style.display = active ? (cfg.display || 'block') : 'none';
     document.getElementById(cfg.nav).classList.toggle('active', active);
   });
   VIEWS[which]?.onShow?.();
@@ -1402,18 +1711,24 @@ function renderResults(data) {
         <div class="empty-h">No matches</div>
         <div class="empty-p">No chunks matched “${escapeHtml(data.query)}”. Try a different term, or make sure a document is uploaded and processed (status “ready”).</div>
       </div>`;
+    resetSearchPreview();
     return;
   }
 
   const rows = results.map((r, i) => {
     const score = (r.reranker_score ?? r.fused_score ?? 0);
+    const docName = r.source || r.doc_id || '';
     return `
-      <div class="res-card">
+      <div class="res-card" data-doc="${escapeHtml(r.doc_id || '')}" data-page="${r.page_number ?? ''}" data-name="${escapeHtml(docName)}" title="Click to preview the source document">
         <div class="res-head">
           <div class="res-meta">
             <span class="res-rank">#${i + 1}</span>
-            <span class="res-src">${escapeHtml(r.source || r.doc_id)}</span>
+            <span class="res-src">${escapeHtml(docName)}</span>
             <span class="res-page">p. ${r.page_number ?? '—'}</span>
+            <span class="res-preview-hint">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+              Preview
+            </span>
           </div>
           <span class="res-score" title="reranker score (fused if not reranked)">${score.toFixed(4)}</span>
         </div>
@@ -1423,10 +1738,107 @@ function renderResults(data) {
 
   resultsBox.innerHTML =
     `<div class="res-count">${results.length} result${results.length === 1 ? '' : 's'} for “${escapeHtml(data.query)}”</div>` + rows;
+
+  // Clicking a result previews its source document (jumping to the chunk's page).
+  const cards = [...resultsBox.querySelectorAll('.res-card')];
+  cards.forEach(card => card.addEventListener('click', () => openSearchPreview(card, true)));
+  // Auto-preview the top result so a document is always visible after a search
+  // (fills the desktop side panel; leaves the mobile drawer closed until tapped).
+  const firstWithDoc = cards.find(c => c.dataset.doc);
+  if (firstWithDoc) openSearchPreview(firstWithDoc, false);
 }
 
 searchBtn.addEventListener('click', runSearch);
 searchQuery.addEventListener('keydown', e => { if (e.key === 'Enter') runSearch(); });
+
+/* Selecting a document from the filter dropdown ALSO loads it into the preview
+   panel immediately (previously it only scoped the next search, so the preview
+   sat on its placeholder). "All documents" clears the preview. openSearchPreview
+   only reads card.dataset.* and calls card.classList.add, so a lightweight stand-in
+   object drives it without a real result card. */
+document.getElementById('searchDoc').addEventListener('change', function () {
+  const docId = this.value;
+  if (!docId) { resetSearchPreview(); return; }
+  const opt = this.options[this.selectedIndex];
+  const name = opt ? opt.text : 'Document';
+  openSearchPreview({ dataset: { doc: docId, name: name, page: '' }, classList: { add() {} } }, true);
+});
+
+/* ── Semantic search: source-document preview drawer ──
+   NOTE: the drawer markup lives near </body>, i.e. AFTER this script, so we must
+   look the elements up lazily (at call time / on DOMContentLoaded), never at the
+   top level — a null.addEventListener here would abort the whole script. */
+function openSearchPreview(card, explicit) {
+  if (!card) return;
+  const docId = card.dataset.doc;
+  if (!docId) return;
+  const page = card.dataset.page, name = card.dataset.name;
+  const svPreview = document.getElementById('svPreview');
+  const pageEl = document.getElementById('svPvPage');
+  const body = document.getElementById('svPvBody');
+  if (!svPreview || !body) return;
+
+  // Highlight the selected result.
+  document.querySelectorAll('#searchResults .res-card.active').forEach(c => c.classList.remove('active'));
+  card.classList.add('active');
+
+  document.getElementById('svPvName').textContent = name || 'Document';
+  const p = parseInt(page, 10);
+  if (Number.isFinite(p)) { pageEl.textContent = 'p. ' + p; pageEl.style.display = ''; }
+  else { pageEl.style.display = 'none'; }
+
+  // Read the CURRENT token from storage (not a value captured once at page load),
+  // so an <iframe> request never 401s with a stale token and silently shows blank.
+  const authTok = localStorage.getItem('access_token') || token || '';
+  const rawUrl = `/docs/${docId}/raw?token=${encodeURIComponent(authTok)}`;
+  // Only Word docs are non-inline-previewable (allowed types are pdf + docx); a
+  // name without a .docx extension (or an extension-less doc_id) is treated as a
+  // PDF and rendered in an iframe, with a link fallback if the browser can't show it.
+  const isDocx = /\.docx?$/i.test(name || '');
+  if (isDocx) {
+    body.innerHTML = `<div class="sv-pv-fallback"><div>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:34px;height:34px;opacity:.5;margin-bottom:10px"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        <div>Word documents can't be previewed inline.</div>
+        <a href="${rawUrl}" target="_blank" rel="noopener">Open ${escapeHtml(name || 'document')} ↗</a></div></div>`;
+  } else {
+    const frag = Number.isFinite(p) ? `#page=${p}` : '';   // PDF viewers jump to #page=N
+    body.innerHTML =
+      `<iframe src="${rawUrl}${frag}" title="document preview"></iframe>
+       <div class="sv-pv-fallback" id="svPvFallback" style="display:none"><div>
+          Couldn't display the document here.<br>
+          <a href="${rawUrl}" target="_blank" rel="noopener">Open ${escapeHtml(name || 'document')} ↗</a></div></div>`;
+    // If the inline PDF fails to render, reveal the direct-open link instead of a blank panel.
+    const ifr = body.querySelector('iframe');
+    if (ifr) ifr.addEventListener('error', () => {
+      const f = document.getElementById('svPvFallback'); if (f) f.style.display = 'grid';
+    });
+  }
+
+  // On desktop the panel is always visible; only an explicit tap opens the mobile drawer.
+  if (explicit && window.matchMedia('(max-width: 1100px)').matches) {
+    svPreview.classList.add('open');
+    const o = document.getElementById('svOverlay'); if (o) o.classList.add('show');
+  }
+}
+function closeSearchPreview() {
+  const svPreview = document.getElementById('svPreview');
+  const svOverlay = document.getElementById('svOverlay');
+  if (svPreview) svPreview.classList.remove('open');   // mobile: hide the drawer
+  if (svOverlay) svOverlay.classList.remove('show');   // (desktop panel stays put)
+}
+function resetSearchPreview() {
+  const body = document.getElementById('svPvBody');
+  if (body) body.innerHTML = `<div class="sv-pv-empty"><div>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+    <div>No document to preview.</div></div></div>`;
+  const nm = document.getElementById('svPvName'); if (nm) nm.textContent = 'Document preview';
+  const pg = document.getElementById('svPvPage'); if (pg) pg.style.display = 'none';
+}
+document.addEventListener('DOMContentLoaded', () => {
+  const c = document.getElementById('svPvClose'); if (c) c.addEventListener('click', closeSearchPreview);
+  const o = document.getElementById('svOverlay'); if (o) o.addEventListener('click', closeSearchPreview);
+});
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSearchPreview(); });
 
 /* ── Mobile drawer ── */
 const sidebar    = document.getElementById('sidebar');
@@ -1454,6 +1866,167 @@ document.querySelectorAll('.sb-item, .sb-logout').forEach(el => {
   el.addEventListener('click', () => { if (window.innerWidth <= 768) closeDrawer(); });
 });
 
+/* ══════════════ Profile popup (was the /profile route — now an in-dashboard modal) ══════════════ */
+const AVATAR_COUNT = 16;
+let pfSelectedAvatar = localStorage.getItem('avatar') || '/static/avatars/av-1.svg';
+let pfPendingAvatar  = pfSelectedAvatar;
+
+/* Render the chosen avatar (image) into the sidebar + mobile cards, replacing the
+   initial-letter placeholder once a user has picked one. */
+function pfApplySidebarAvatar() {
+  const img = `<img src="${pfSelectedAvatar}" alt="avatar"/>`;
+  const sb = document.getElementById('userAvatar');
+  const mob = document.getElementById('mobAvatar');
+  if (localStorage.getItem('avatar')) {
+    if (sb) sb.innerHTML = img;
+    if (mob) mob.innerHTML = img;
+  }
+}
+
+function pfToast(msg){ const t=document.getElementById('pfToast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),1800); }
+
+function openProfile(){
+  // Seed identity from what /auth/me already populated in the sidebar.
+  document.getElementById('pfName').textContent  = document.getElementById('userName').textContent || 'User';
+  document.getElementById('pfEmail').textContent = document.getElementById('userEmail').textContent || '';
+  document.getElementById('pfAvatarImg').src = pfSelectedAvatar;
+  document.getElementById('pfEmailEditor').classList.add('pf-collapsed');
+  document.getElementById('pfPwEditor').classList.add('pf-collapsed');
+  document.getElementById('pfPicker').classList.add('pf-collapsed');
+  document.getElementById('pfOverlay').classList.add('show');
+  if (window.innerWidth <= 768) closeDrawer();
+}
+function closeProfile(){ document.getElementById('pfOverlay').classList.remove('show'); }
+
+/* avatar picker (inline grid inside the modal) */
+function pfBuildGrid(){
+  const g = document.getElementById('pfGrid'); g.innerHTML='';
+  for (let i=1;i<=AVATAR_COUNT;i++){
+    const path = `/static/avatars/av-${i}.svg`;
+    const div = document.createElement('div');
+    div.className = 'pf-opt' + (path===pfPendingAvatar?' selected':'');
+    div.innerHTML = `<img src="${path}" alt="avatar ${i}"/>`;
+    div.onclick = () => { pfPendingAvatar = path; g.querySelectorAll('.pf-opt').forEach(o=>o.classList.remove('selected')); div.classList.add('selected'); };
+    g.appendChild(div);
+  }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  pfApplySidebarAvatar();
+  document.getElementById('pfOverlay').addEventListener('click', (e)=>{ if(e.target.id==='pfOverlay') closeProfile(); });
+  document.getElementById('pfClose').onclick = closeProfile;
+
+  document.getElementById('pfAvatarBig').onclick = () => {
+    pfPendingAvatar = pfSelectedAvatar; pfBuildGrid();
+    document.getElementById('pfPicker').classList.toggle('pf-collapsed');
+  };
+  document.getElementById('pfPickerSave').onclick = () => {
+    pfSelectedAvatar = pfPendingAvatar;
+    document.getElementById('pfAvatarImg').src = pfSelectedAvatar;
+    localStorage.setItem('avatar', pfSelectedAvatar);   // Phase 2: no backend avatar field yet — stored locally
+    pfApplySidebarAvatar();
+    document.getElementById('pfPicker').classList.add('pf-collapsed');
+    pfToast('Avatar updated');
+  };
+  document.getElementById('pfPickerCancel').onclick = () => document.getElementById('pfPicker').classList.add('pf-collapsed');
+
+  /* email inline edit (local only — no logged-in email-change endpoint exists) */
+  document.getElementById('pfEditEmail').onclick = () => {
+    document.getElementById('pfEmailInput').value = document.getElementById('pfEmail').textContent;
+    document.getElementById('pfEmailEditor').classList.remove('pf-collapsed');
+  };
+  document.getElementById('pfCancelEmail').onclick = () => document.getElementById('pfEmailEditor').classList.add('pf-collapsed');
+  document.getElementById('pfSaveEmail').onclick = () => {
+    const v = document.getElementById('pfEmailInput').value.trim();
+    if (!v || !v.includes('@')){ pfToast('Enter a valid email'); return; }
+    document.getElementById('pfEmail').textContent = v;
+    console.log('[profile] email change requested →', v, '(no backend endpoint yet; local only)');
+    document.getElementById('pfEmailEditor').classList.add('pf-collapsed');
+    pfToast('Email updated (local)');
+  };
+
+  /* change password (local only — reuse the reset-password flow in a later phase) */
+  document.getElementById('pfPwReveal').onclick = () => document.getElementById('pfPwEditor').classList.toggle('pf-collapsed');
+  document.getElementById('pfCancelPw').onclick = () => { document.getElementById('pfPwEditor').classList.add('pf-collapsed'); ['pfPwCurrent','pfPwNew','pfPwConfirm'].forEach(id=>document.getElementById(id).value=''); };
+  document.getElementById('pfSavePw').onclick = () => {
+    const cur=document.getElementById('pfPwCurrent').value, nw=document.getElementById('pfPwNew').value, cf=document.getElementById('pfPwConfirm').value;
+    if (!cur || !nw){ pfToast('Fill all fields'); return; }
+    if (nw.length < 8){ pfToast('New password too short'); return; }
+    if (nw !== cf){ pfToast('Passwords do not match'); return; }
+    console.log('[profile] password change requested (no backend endpoint yet; local only)');
+    ['pfPwCurrent','pfPwNew','pfPwConfirm'].forEach(id=>document.getElementById(id).value='');
+    document.getElementById('pfPwEditor').classList.add('pf-collapsed');
+    pfToast('Password updated (local)');
+  };
+});
 </script>
+
+<!-- ══════════════ Profile popup ══════════════ -->
+<div class="pf-overlay" id="pfOverlay">
+  <div class="pf-card">
+    <button class="pf-close" id="pfClose" aria-label="Close">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+
+    <div class="pf-avatar-big" id="pfAvatarBig" title="Change avatar">
+      <img id="pfAvatarImg" src="/static/avatars/av-1.svg" alt="avatar"/>
+      <div class="pf-avatar-edit">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:11px;height:11px"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>
+        Edit
+      </div>
+    </div>
+
+    <div class="pf-name" id="pfName">User</div>
+    <div class="pf-email-row">
+      <span id="pfEmail"></span>
+      <button class="pf-link-btn" id="pfEditEmail">Edit</button>
+    </div>
+
+    <!-- avatar picker (inline, toggled by clicking the avatar) -->
+    <div class="pf-section pf-collapsed" id="pfPicker">
+      <h4>Choose an avatar</h4>
+      <div class="pf-picker-grid" id="pfGrid"></div>
+      <div class="pf-btn-row" style="margin-top:14px">
+        <button class="pf-btn primary" id="pfPickerSave">Save avatar</button>
+        <button class="pf-btn" id="pfPickerCancel">Cancel</button>
+      </div>
+    </div>
+
+    <!-- inline email edit -->
+    <div class="pf-section pf-collapsed" id="pfEmailEditor">
+      <h4>Edit email</h4>
+      <div class="pf-field"><label>Email address</label><input type="email" id="pfEmailInput" /></div>
+      <div class="pf-btn-row">
+        <button class="pf-btn primary" id="pfSaveEmail">Save</button>
+        <button class="pf-btn" id="pfCancelEmail">Cancel</button>
+      </div>
+    </div>
+
+    <!-- security -->
+    <div class="pf-section">
+      <h4>Security</h4>
+      <button class="pf-revealer" id="pfPwReveal">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        Change Password
+      </button>
+      <div class="pf-collapsed" id="pfPwEditor" style="margin-top:12px">
+        <div class="pf-field"><label>Current password</label><input type="password" id="pfPwCurrent" placeholder="••••••••"/></div>
+        <div class="pf-field"><label>New password</label><input type="password" id="pfPwNew" placeholder="At least 8 characters"/></div>
+        <div class="pf-field"><label>Confirm new password</label><input type="password" id="pfPwConfirm" placeholder="Repeat new password"/></div>
+        <div class="pf-btn-row">
+          <button class="pf-btn primary" id="pfSavePw">Update password</button>
+          <button class="pf-btn" id="pfCancelPw">Cancel</button>
+        </div>
+        <div class="pf-note">Password &amp; email changes are stored locally for now — a later phase wires them to the account API.</div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="pf-toast" id="pfToast">Saved</div>
+
+<!-- Semantic-search preview: the panel is inline in #searchView; this is only the
+     mobile drawer's backdrop. -->
+<div class="sv-overlay" id="svOverlay"></div>
+
 </body>
 </html>

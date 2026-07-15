@@ -1,0 +1,1315 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Chat with Document — DocuChunk</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; }
+
+    /* ── Theme tokens (dark default; light overrides below) ─────────────────── */
+    :root, :root[data-theme="dark"] {
+      --bg:#04070f; --bg-1:#070c18; --bg-2:#0c1220; --bg-card:#0f1826; --bg-hover:#131e2e;
+      --b:rgba(30,90,180,0.22); --b-hi:rgba(0,170,255,0.4);
+      --cyan:#00C8FF; --cyan-dim:rgba(0,200,255,0.09); --cyan-glow:rgba(0,200,255,0.18);
+      --blue:#0055FF; --text:#D8E8FF; --text2:#6888AA; --text3:#2A4060;
+      --user-bubble:linear-gradient(135deg,#0055FF,#00C8FF); --user-text:#ffffff;
+      --asst-bubble:#0f1826;
+      --green:#37E2A0; --yellow:#FFC24D; --red:#FF6B7D;
+      --r:10px; --rl:16px;
+    }
+    :root[data-theme="light"] {
+      --bg:#eef3fb; --bg-1:#ffffff; --bg-2:#f4f7fc; --bg-card:#ffffff; --bg-hover:#eaf1fb;
+      --b:rgba(20,80,160,0.16); --b-hi:rgba(0,120,220,0.4);
+      --cyan:#0091c8; --cyan-dim:rgba(0,145,200,0.10); --cyan-glow:rgba(0,145,200,0.15);
+      --blue:#0055FF; --text:#0c1a2e; --text2:#546b86; --text3:#a7bad2;
+      --user-bubble:linear-gradient(135deg,#0055FF,#00A0E0); --user-text:#ffffff;
+      --asst-bubble:#ffffff;
+      --green:#0a9d6e; --yellow:#c98a00; --red:#d63a4e;
+    }
+
+    body {
+      font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;
+      background:var(--bg); color:var(--text); -webkit-font-smoothing:antialiased;
+      height:100vh; overflow:hidden;
+    }
+    .app { display:flex; height:100vh; animation:appIn .28s ease both; }
+    /* Smooth entry (e.g. from the dashboard) instead of a hard flash. */
+    @keyframes appIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:none; } }
+    @media (prefers-reduced-motion: reduce) { .app { animation:none; } }
+    svg { width:18px; height:18px; }
+    button { font-family:inherit; cursor:pointer; }
+
+    /* ── LEFT: session sidebar ──────────────────────────────────────────────── */
+    .sessions {
+      width:280px; flex-shrink:0; background:var(--bg-1); border-right:1px solid var(--b);
+      display:flex; flex-direction:column; transition:transform .25s ease; z-index:40;
+    }
+    .ss-head { padding:16px 16px 10px; display:flex; align-items:center; justify-content:space-between; gap:8px; }
+    .ss-logo { display:flex; align-items:center; gap:9px; font-weight:700; }
+    .logo-box { width:28px; height:28px; border-radius:8px; background:linear-gradient(135deg,var(--blue),var(--cyan));
+      display:grid; place-items:center; color:#fff; font-weight:800; font-size:15px; }
+    .ss-title { padding:6px 16px; font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--text2); }
+    .newchat {
+      margin:8px 12px; padding:10px 12px; border:1px solid var(--b-hi); border-radius:var(--r);
+      background:var(--cyan-dim); color:var(--cyan); font-weight:600; font-size:13px;
+      display:flex; align-items:center; justify-content:center; gap:8px; transition:.15s;
+    }
+    .newchat:hover { background:var(--cyan-glow); }
+    .ss-list { flex:1; overflow-y:auto; padding:6px 10px; }
+    .ss-doc-group { margin-bottom:14px; }
+    .ss-doc-name { font-size:11px; color:var(--text2); padding:4px 8px; font-weight:600;
+      display:flex; align-items:center; gap:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .ss-item { padding:9px 10px; border-radius:var(--r); cursor:pointer; margin-bottom:3px; border:1px solid transparent; }
+    .ss-item:hover { background:var(--bg-hover); }
+    .ss-item.active { background:var(--bg-hover); border-color:var(--b-hi); }
+    .ss-item-top { display:flex; align-items:center; gap:6px; }
+    .ss-item-preview { flex:1; font-size:12.5px; color:var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .ss-item-time { font-size:10.5px; color:var(--text2); margin-top:3px; }
+    .ss-lock { font-size:9.5px; color:var(--text2); border:1px solid var(--b); border-radius:100px; padding:1px 6px; flex-shrink:0; }
+    .ss-lock.live { color:var(--green); border-color:rgba(55,226,160,.4); }
+
+    .ss-foot { border-top:1px solid var(--b); padding:10px; }
+    .profile-card { display:flex; align-items:center; gap:10px; padding:8px; border-radius:var(--r); cursor:pointer; }
+    .profile-card:hover { background:var(--bg-hover); }
+    .pc-avatar { width:34px; height:34px; border-radius:9px; overflow:hidden; flex-shrink:0; background:var(--bg-2); }
+    .pc-avatar img { width:100%; height:100%; display:block; }
+    .pc-info { flex:1; min-width:0; }
+    .pc-name { font-size:13px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .pc-sub { font-size:11px; color:var(--text2); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .pc-gear { color:var(--text2); flex-shrink:0; }
+
+    /* ── MAIN: chat ─────────────────────────────────────────────────────────── */
+    .main { flex:1; display:flex; flex-direction:column; min-width:0; }
+    .topbar { height:56px; flex-shrink:0; border-bottom:1px solid var(--b); background:var(--bg-1);
+      display:flex; align-items:center; gap:12px; padding:0 18px; }
+    .hb, .icon-btn { display:none; background:none; border:none; color:var(--text); }
+    .topbar-doc { display:flex; align-items:center; gap:9px; font-weight:600; min-width:0; }
+    .topbar-doc .fname { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .status-pill { font-size:11px; padding:3px 9px; border-radius:100px; display:inline-flex; align-items:center; gap:5px; }
+    .status-ready { background:rgba(55,226,160,.12); color:var(--green); }
+    .status-processing { background:rgba(255,194,77,.12); color:var(--yellow); }
+    .status-locked { background:rgba(104,136,170,.14); color:var(--text2); }
+    .dot { width:6px; height:6px; border-radius:50%; background:currentColor; }
+    .spacer { flex:1; }
+    .top-btn { background:none; border:1px solid var(--b); color:var(--text2); border-radius:8px;
+      width:34px; height:34px; display:grid; place-items:center; }
+    .top-btn:hover { color:var(--cyan); border-color:var(--b-hi); }
+    .top-btn.on { color:var(--cyan); border-color:var(--b-hi); }
+    /* Labeled variant — the "Dashboard" back button reads as a real action, not a
+       bare icon. Auto width + a text label; the label collapses on tiny screens. */
+    .top-btn-label { width:auto; padding:0 12px; gap:7px; display:inline-flex; align-items:center;
+      font-size:13px; font-weight:600; text-decoration:none; }
+    @media (max-width:480px) { .top-btn-label span { display:none; } .top-btn-label { padding:0; width:34px; } }
+
+    .msgs { flex:1; overflow-y:auto; padding:24px 0; }
+    .msgs-inner { max-width:820px; margin:0 auto; padding:0 20px; display:flex; flex-direction:column; gap:20px; }
+
+    .row { display:flex; gap:12px; align-items:flex-start; }
+    .row.user { flex-direction:row-reverse; }
+    .avatar { width:34px; height:34px; border-radius:9px; flex-shrink:0; overflow:hidden; display:grid; place-items:center; }
+    .avatar img { width:100%; height:100%; }
+    .avatar.asst { background:linear-gradient(135deg,var(--blue),var(--cyan)); color:#fff; font-weight:800; }
+    .bubble-wrap { max-width:78%; display:flex; flex-direction:column; }
+    .row.user .bubble-wrap { align-items:flex-end; }
+    .bubble { padding:12px 15px; border-radius:14px; font-size:14.5px; line-height:1.6; word-wrap:break-word; white-space:pre-wrap; }
+    .row.user .bubble { background:var(--user-bubble); color:var(--user-text); border-bottom-right-radius:4px; }
+    .row.asst .bubble { background:var(--asst-bubble); border:1px solid var(--b); border-bottom-left-radius:4px; }
+    .bubble.abstained { border-style:dashed; color:var(--text2); background:transparent; }
+    .abstain-note { display:flex; align-items:center; gap:8px; font-size:13px; }
+    .abstain-note svg { color:var(--yellow); flex-shrink:0; }
+
+    /* citation badges */
+    .cite { display:inline-grid; place-items:center; min-width:17px; height:17px; padding:0 4px;
+      margin:0 1px; font-size:10.5px; font-weight:700; border-radius:5px; vertical-align:super;
+      background:var(--cyan-dim); color:var(--cyan); border:1px solid var(--b-hi); cursor:pointer;
+      line-height:1; transition:.12s; }
+    .cite:hover { background:var(--cyan-glow); transform:translateY(-1px); }
+    .cite.dropped { background:rgba(255,107,125,.12); color:var(--red); border-color:rgba(255,107,125,.5);
+      text-decoration:line-through; }
+
+    .cursor-blink { display:inline-block; width:7px; height:15px; background:var(--cyan); margin-left:2px;
+      vertical-align:text-bottom; animation:blink 1s steps(1) infinite; }
+    @keyframes blink { 50% { opacity:0; } }
+
+    /* confidence */
+    .conf { margin-top:9px; width:100%; max-width:360px; opacity:0; transform:translateY(4px);
+      transition:opacity .4s ease, transform .4s ease; }
+    .conf.show { opacity:1; transform:none; }
+    .conf-row { display:flex; align-items:center; gap:10px; cursor:pointer; }
+    .conf-bar { flex:1; height:6px; border-radius:100px; background:var(--bg-2); overflow:hidden; }
+    .conf-fill { height:100%; border-radius:100px; width:0; transition:width .6s ease; }
+    .conf-label { font-size:11.5px; font-weight:600; white-space:nowrap; display:flex; align-items:center; gap:5px; }
+    .conf-caret { color:var(--text2); transition:transform .2s; }
+    .conf.open .conf-caret { transform:rotate(180deg); }
+    .conf-signals { display:none; margin-top:9px; padding:11px; border:1px solid var(--b); border-radius:var(--r);
+      background:var(--bg-2); font-size:12px; }
+    .conf.open .conf-signals { display:block; }
+    .sig { display:flex; align-items:center; gap:8px; margin-bottom:7px; }
+    .sig:last-child { margin-bottom:0; }
+    .sig-name { width:130px; color:var(--text2); flex-shrink:0; }
+    .sig-track { flex:1; height:5px; background:var(--bg-card); border-radius:100px; overflow:hidden; }
+    .sig-fill { height:100%; background:var(--cyan); border-radius:100px; }
+    .sig-val { width:38px; text-align:right; font-variant-numeric:tabular-nums; color:var(--text); }
+    .sig-flag { font-size:11px; color:var(--text2); margin-top:4px; }
+
+    /* ── Voice output: tutor avatar states + TTS highlight + speaker button ──── */
+    /* The assistant avatar becomes an animated tutor "presence". State is driven
+       by CSS classes toggled from the streaming + TTS callbacks — no JS animation
+       library. tutor-idle (calm pulse) → tutor-thinking (faster + glow ring) →
+       tutor-speaking (breathing scale + sound-wave). */
+    .tutor { position:relative; background:var(--bg-2); border:1px solid var(--b); }
+    .tutor img { width:100%; height:100%; display:block; }
+    .tutor-ring { position:absolute; inset:-4px; border-radius:inherit; pointer-events:none;
+      border:2px solid transparent; }
+    .tutor-idle { animation:tutorPulse 2s ease-in-out infinite; }
+    @keyframes tutorPulse { 0%,100%{ opacity:.9; } 50%{ opacity:1; } }
+    .tutor-thinking { animation:tutorPulse 1s ease-in-out infinite; }
+    .tutor-thinking .tutor-ring { border-color:var(--cyan);
+      animation:tutorGlow 1.1s ease-in-out infinite; }
+    @keyframes tutorGlow {
+      0%,100%{ box-shadow:0 0 0 0 var(--cyan-glow); opacity:.5; }
+      50%{ box-shadow:0 0 10px 3px var(--cyan-glow); opacity:1; } }
+    .tutor-speaking { animation:tutorSpeak 0.9s ease-in-out infinite; }
+    @keyframes tutorSpeak { 0%,100%{ transform:scale(1); } 50%{ transform:scale(1.03); } }
+    /* animated sound-wave badge — only visible while speaking */
+    .tutor-wave { position:absolute; right:-5px; bottom:-5px; display:none;
+      align-items:flex-end; gap:1.5px; height:14px; padding:2px 3px; border-radius:6px;
+      background:var(--bg-card); border:1px solid var(--b-hi); }
+    .tutor-speaking .tutor-wave { display:flex; }
+    .tutor-wave i { width:2px; height:4px; background:var(--cyan); border-radius:2px;
+      animation:tutorBars 0.7s ease-in-out infinite; }
+    .tutor-wave i:nth-child(2){ animation-delay:.15s; }
+    .tutor-wave i:nth-child(3){ animation-delay:.3s; }
+    @keyframes tutorBars { 0%,100%{ height:4px; } 50%{ height:11px; } }
+
+    /* large welcome-state tutor presence */
+    .tutor-hero { width:120px; height:120px; border-radius:32px; margin:0 auto 16px;
+      overflow:hidden; background:var(--bg-2); border:1px solid var(--b); }
+    .tutor-hero img { width:100%; height:100%; display:block; }
+
+    /* per-sentence highlight while that sentence is being spoken */
+    .tts-sentence { border-radius:4px; transition:background .15s ease; }
+    .tts-sentence.speaking { background:var(--cyan-dim);
+      box-shadow:0 0 0 3px var(--cyan-dim); }
+
+    /* speaker (Listen) button on assistant bubbles, sits by the confidence bar */
+    .msg-actions { display:flex; align-items:center; gap:8px; margin-top:8px; }
+    .tts-btn { display:inline-flex; align-items:center; gap:6px; padding:4px 10px;
+      border:1px solid var(--b); border-radius:100px; background:var(--bg-2);
+      color:var(--text2); font-size:11.5px; font-weight:600; transition:.15s; }
+    .tts-btn:hover { color:var(--cyan); border-color:var(--b-hi); }
+    .tts-btn.playing { color:var(--cyan); border-color:var(--b-hi); background:var(--cyan-dim); }
+    .tts-btn svg { width:14px; height:14px; }
+
+    /* voice & reading settings rows (in the profile modal) */
+    .set-row { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:12px; }
+    .set-row label { font-size:12.5px; color:var(--text); }
+    .set-row .set-hint { font-size:11px; color:var(--text2); }
+    .modal select.set-select { padding:8px 10px; background:var(--bg-2); border:1px solid var(--b);
+      border-radius:var(--r); color:var(--text); font-family:inherit; font-size:13px; outline:none;
+      max-width:190px; }
+    .modal select.set-select:focus { border-color:var(--b-hi); }
+    /* small toggle switch */
+    .switch { position:relative; width:40px; height:22px; flex-shrink:0; }
+    .switch input { opacity:0; width:0; height:0; }
+    .switch .slider { position:absolute; inset:0; background:var(--bg-2); border:1px solid var(--b);
+      border-radius:100px; transition:.2s; }
+    .switch .slider::before { content:''; position:absolute; width:16px; height:16px; left:2px; top:2px;
+      background:var(--text2); border-radius:50%; transition:.2s; }
+    .switch input:checked + .slider { background:var(--cyan-dim); border-color:var(--b-hi); }
+    .switch input:checked + .slider::before { transform:translateX(18px); background:var(--cyan); }
+
+    /* input */
+    .composer { flex-shrink:0; border-top:1px solid var(--b); background:var(--bg-1); padding:14px 20px 10px; }
+    .composer-inner { max-width:820px; margin:0 auto; }
+    .composer-box { display:flex; align-items:flex-end; gap:10px; background:var(--bg-card); border:1px solid var(--b);
+      border-radius:var(--rl); padding:8px 8px 8px 14px; }
+    .composer-box:focus-within { border-color:var(--b-hi); }
+    textarea { flex:1; resize:none; border:none; outline:none; background:transparent; color:var(--text);
+      font-family:inherit; font-size:14.5px; line-height:1.5; max-height:112px; padding:6px 0; }
+    .send { width:38px; height:38px; flex-shrink:0; border:none; border-radius:10px; background:var(--blue);
+      color:#fff; display:grid; place-items:center; transition:.15s; }
+    .send:hover:not(:disabled) { background:var(--cyan); }
+    .send:disabled { opacity:.4; cursor:not-allowed; }
+    .locked-note { text-align:center; font-size:12px; color:var(--text2); padding:6px; }
+    .powered { text-align:center; font-size:10.5px; color:var(--text3); margin-top:8px; letter-spacing:.03em; }
+
+    /* ── RIGHT: document preview ─────────────────────────────────────────────── */
+    .preview { width:420px; flex-shrink:0; background:var(--bg-1); border-left:1px solid var(--b);
+      display:flex; flex-direction:column; transition:margin .25s ease; }
+    .preview.collapsed { display:none; }
+    .pv-head { height:56px; flex-shrink:0; border-bottom:1px solid var(--b); display:flex; align-items:center;
+      gap:9px; padding:0 16px; font-size:12.5px; font-weight:600; color:var(--text2); }
+    .pv-head .pv-name { color:var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .pv-body { flex:1; position:relative; background:var(--bg-2); }
+    .pv-body iframe { width:100%; height:100%; border:none; background:#fff; opacity:0; transition:opacity .35s ease; }
+    .pv-body iframe.loaded { opacity:1; }
+    .pv-empty { position:absolute; inset:0; display:grid; place-items:center; text-align:center; color:var(--text2); padding:24px; }
+    .pv-empty svg { width:38px; height:38px; opacity:.5; margin-bottom:10px; }
+    .pv-dl { margin-top:10px; display:inline-block; color:var(--cyan); font-size:13px; }
+
+    /* citation popover */
+    .popover { position:fixed; z-index:80; width:300px; max-width:calc(100vw - 24px); background:var(--bg-card);
+      border:1px solid var(--b-hi); border-radius:var(--rl); padding:13px; box-shadow:0 12px 40px rgba(0,0,0,.5);
+      display:none; }
+    .popover.show { display:block; }
+    .pop-head { display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+    .pop-badge { min-width:20px; height:20px; padding:0 5px; display:grid; place-items:center; font-size:11px; font-weight:700;
+      border-radius:6px; background:var(--cyan-dim); color:var(--cyan); border:1px solid var(--b-hi); }
+    .pop-badge.dropped { background:rgba(255,107,125,.12); color:var(--red); border-color:rgba(255,107,125,.5); }
+    .pop-src { font-size:12.5px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .pop-page { font-size:11px; color:var(--text2); }
+    .pop-excerpt { font-size:12.5px; color:var(--text); line-height:1.55; background:var(--bg-2); border-radius:8px;
+      padding:9px; border-left:2px solid var(--cyan); }
+    .pop-warn { margin-top:8px; font-size:11.5px; color:var(--red); display:flex; gap:6px; align-items:flex-start; }
+    .pop-toggle { margin-top:6px; font-size:11.5px; color:var(--cyan); background:none; border:none; padding:0; }
+
+    /* modals (doc picker + profile) */
+    .overlay { position:fixed; inset:0; background:rgba(0,0,0,.55); z-index:90; display:none;
+      align-items:center; justify-content:center; padding:20px; }
+    .overlay.show { display:flex; }
+    .modal { width:440px; max-width:100%; max-height:88vh; overflow-y:auto; background:var(--bg-card);
+      border:1px solid var(--b); border-radius:var(--rl); padding:20px; position:relative; }
+    .modal h3 { font-size:16px; margin-bottom:4px; }
+    .modal p { font-size:12.5px; color:var(--text2); margin-bottom:14px; }
+    .doc-opt { display:flex; align-items:center; gap:11px; padding:11px; border:1px solid var(--b); border-radius:var(--r);
+      margin-bottom:8px; cursor:pointer; }
+    .doc-opt:hover { background:var(--bg-hover); border-color:var(--b-hi); }
+    .doc-opt.disabled { opacity:.5; cursor:not-allowed; }
+    .doc-ico { width:32px; height:32px; border-radius:8px; background:var(--cyan-dim); color:var(--cyan);
+      display:grid; place-items:center; flex-shrink:0; }
+    .doc-meta .dm-name { font-size:13.5px; font-weight:600; }
+    .doc-meta .dm-sub { font-size:11px; color:var(--text2); }
+    .modal-close { margin-top:6px; width:100%; padding:9px; background:var(--bg-2); border:1px solid var(--b);
+      color:var(--text2); border-radius:var(--r); }
+
+    .empty { flex:1; display:grid; place-items:center; color:var(--text2); text-align:center; padding:20px; }
+    .empty svg { width:40px; height:40px; opacity:.5; margin-bottom:12px; }
+
+    /* profile popup */
+    .pf-avatar-big { width:96px; height:96px; border-radius:24px; margin:0 auto 8px; overflow:hidden; position:relative;
+      border:2px solid var(--b-hi); cursor:pointer; background:var(--bg-2); }
+    .pf-avatar-big img { width:100%; height:100%; display:block; }
+    .pf-avatar-edit { position:absolute; inset:auto 0 0 0; background:rgba(0,0,0,.55); color:#fff; font-size:10.5px;
+      padding:4px 0; display:flex; align-items:center; justify-content:center; gap:5px; }
+    .pf-name { font-size:20px; font-weight:700; margin-top:6px; text-align:center; }
+    .pf-email-row { display:flex; align-items:center; justify-content:center; gap:8px; color:var(--text2); font-size:13.5px; margin-top:5px; }
+    .pf-link-btn { background:none; border:none; color:var(--cyan); font-size:12px; font-weight:600; }
+    .pf-section { text-align:left; margin-top:22px; border-top:1px solid var(--b); padding-top:18px; }
+    .pf-section h4 { font-size:11.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--text2); margin-bottom:12px; }
+    .pf-field { margin-bottom:12px; }
+    .pf-field label { display:block; font-size:12px; color:var(--text2); margin-bottom:5px; }
+    .modal input[type=email], .modal input[type=password] { width:100%; padding:10px 12px; background:var(--bg-2);
+      border:1px solid var(--b); border-radius:var(--r); color:var(--text); font-family:inherit; font-size:14px; outline:none; }
+    .modal input:focus { border-color:var(--b-hi); }
+    .pf-btn-row { display:flex; gap:8px; margin-top:6px; }
+    .pf-btn { padding:9px 16px; border-radius:var(--r); font-size:13px; font-weight:600; border:1px solid var(--b);
+      background:var(--bg-2); color:var(--text); }
+    .pf-btn.primary { background:var(--blue); border-color:var(--blue); color:#fff; }
+    .pf-btn.primary:hover { background:var(--cyan); border-color:var(--cyan); }
+    .pf-collapsed { display:none; }
+    .pf-revealer { width:100%; padding:11px; border:1px dashed var(--b); border-radius:var(--r); background:transparent;
+      color:var(--text2); font-size:13px; display:flex; align-items:center; justify-content:center; gap:8px; }
+    .pf-revealer:hover { color:var(--cyan); border-color:var(--b-hi); }
+    .pf-note { font-size:11px; color:var(--text3); margin-top:8px; }
+    .pf-picker-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-top:6px; }
+    .pf-opt { aspect-ratio:1; border-radius:14px; overflow:hidden; cursor:pointer; border:2px solid transparent; background:var(--bg-2); }
+    .pf-opt img { width:100%; height:100%; display:block; }
+    .pf-opt:hover { border-color:var(--b-hi); }
+    .pf-opt.selected { border-color:var(--cyan); box-shadow:0 0 0 3px var(--cyan-glow); }
+    .toast { position:fixed; bottom:22px; left:50%; transform:translateX(-50%) translateY(20px); background:var(--bg-card);
+      border:1px solid var(--green); color:var(--green); padding:11px 18px; border-radius:var(--r); font-size:13px;
+      opacity:0; transition:.3s; z-index:120; pointer-events:none; }
+    .toast.show { opacity:1; transform:translateX(-50%); }
+
+    /* Close (×) button in the preview header — only needed when the preview is a
+       full overlay (narrow screens); hidden on desktop where the topbar toggle sits
+       beside the panel. */
+    .pv-close { display:none; width:30px; height:30px; margin-left:6px; flex-shrink:0;
+      background:transparent; border:1px solid var(--b); border-radius:8px; color:var(--text2);
+      cursor:pointer; place-items:center; transition:.15s; }
+    .pv-close:hover { color:var(--cyan); border-color:var(--b-hi); background:var(--cyan-dim); }
+    .pv-close svg { width:15px; height:15px; }
+
+    /* preview toggle is always available; on narrow screens it overlays */
+    @media (max-width:1200px) {
+      .preview { position:fixed; inset:0 0 0 auto; width:min(460px,90vw); z-index:70; box-shadow:0 0 40px rgba(0,0,0,.5); }
+      .preview.collapsed { display:none; }
+      .pv-close { display:grid; }
+    }
+    @media (max-width:860px) {
+      .sessions { position:fixed; inset:0 auto 0 0; transform:translateX(-100%); box-shadow:0 0 40px rgba(0,0,0,.5); }
+      .sessions.open { transform:none; }
+      .hb { display:grid; place-items:center; }
+      .bubble-wrap { max-width:88%; }
+    }
+  </style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ═══════════ LEFT: SESSION SIDEBAR ═══════════ -->
+  <aside class="sessions" id="sessions">
+    <div class="ss-head">
+      <a class="ss-logo" href="/dashboard" style="text-decoration:none;color:inherit">
+        <div class="logo-box">D</div><span>DocuChunk</span>
+      </a>
+    </div>
+    <div class="ss-title">Chat Sessions</div>
+    <button class="newchat" id="newChatBtn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      New Chat
+    </button>
+    <div class="ss-list" id="ssList"></div>
+
+    <div class="ss-foot">
+      <div class="profile-card" id="profileCard">
+        <div class="pc-avatar"><img id="pcAvatar" src="/static/avatars/av-1.svg" alt="avatar"/></div>
+        <div class="pc-info">
+          <div class="pc-name" id="pcName">Loading…</div>
+          <div class="pc-sub" id="pcSub"></div>
+        </div>
+        <svg class="pc-gear" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+        </svg>
+      </div>
+    </div>
+  </aside>
+  <div class="overlay" id="drawerOverlay" style="z-index:35;background:rgba(0,0,0,.4)"></div>
+
+  <!-- ═══════════ MAIN: CHAT ═══════════ -->
+  <main class="main">
+    <div class="topbar">
+      <button class="hb" id="hb" aria-label="menu">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
+      <div class="topbar-doc">
+        <svg viewBox="0 0 24 24" fill="none" stroke="var(--cyan)" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        <span class="fname" id="topDoc">Select a session</span>
+        <span class="status-pill status-ready" id="topStatus" style="display:none"><span class="dot"></span>ready</span>
+      </div>
+      <div class="spacer"></div>
+      <a class="top-btn top-btn-label" href="/dashboard" title="Back to dashboard" aria-label="Back to dashboard">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+        <span>Dashboard</span>
+      </a>
+      <button class="top-btn on" id="previewBtn" title="Toggle document preview" aria-label="Toggle preview">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+      </button>
+      <button class="top-btn" id="themeBtn" title="Toggle theme" aria-label="Toggle theme">
+        <svg id="themeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+      </button>
+    </div>
+
+    <div class="msgs" id="msgs">
+      <div class="msgs-inner" id="msgsInner"></div>
+      <div class="empty" id="emptyState">
+        <div>
+          <div class="tutor-hero tutor tutor-idle" aria-hidden="true"><img src="/static/avatars/tutor.svg" alt="tutor"/></div>
+          <div style="font-size:15px;font-weight:600;color:var(--text);margin-bottom:6px">Hi! I'm your document tutor.</div>
+          <div id="emptyText">Upload a document and ask me anything.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="composer">
+      <div class="composer-inner">
+        <div class="composer-box" id="composerBox">
+          <textarea id="input" rows="1" placeholder="Ask a question about the document…"></textarea>
+          <button class="send" id="send" disabled aria-label="Send">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+          </button>
+        </div>
+        <div class="locked-note pf-collapsed" id="lockedNote">This session is locked (read-only). Start a New Chat to continue.</div>
+        <div class="powered">Powered by DocuChunk · <span id="modelName">gemini-3.1-flash-lite</span></div>
+      </div>
+    </div>
+  </main>
+
+  <!-- ═══════════ RIGHT: DOCUMENT PREVIEW ═══════════ -->
+  <!-- Backdrop shown only when the preview overlays the chat on narrow screens.
+       z-index 65 sits BELOW the preview (70) but above the chat — tap to close. -->
+  <div class="overlay" id="previewOverlay" style="z-index:65;background:rgba(0,0,0,.4)"></div>
+  <aside class="preview" id="preview">
+    <div class="pv-head">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+      <span>Document preview</span>
+      <div class="spacer"></div>
+      <span class="pv-name" id="pvName"></span>
+      <button class="pv-close" id="pvClose" title="Close preview" aria-label="Close preview">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="pv-body" id="pvBody">
+      <div class="pv-empty" id="pvEmpty">
+        <div>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          <div>Open a session to preview its document here.</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+</div>
+
+<!-- citation popover -->
+<div class="popover" id="popover"></div>
+
+<!-- new-chat / doc picker -->
+<div class="overlay" id="modalOverlay">
+  <div class="modal">
+    <h3>New Chat</h3>
+    <p>Select a document to chat with. A fresh session is created.</p>
+    <div id="docList"></div>
+    <button class="modal-close" id="modalClose">Cancel</button>
+  </div>
+</div>
+
+<!-- profile popup -->
+<div class="overlay" id="pfOverlay" style="z-index:100">
+  <div class="modal" style="text-align:center">
+    <button class="pf-btn" id="pfClose" style="position:absolute;top:14px;right:14px;width:30px;height:30px;padding:0;display:grid;place-items:center">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+    <div class="pf-avatar-big" id="pfAvatarBig" title="Change avatar">
+      <img id="pfAvatarImg" src="/static/avatars/av-1.svg" alt="avatar"/>
+      <div class="pf-avatar-edit">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:11px;height:11px"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>
+        Edit
+      </div>
+    </div>
+    <div class="pf-name" id="pfName">User</div>
+    <div class="pf-email-row"><span id="pfEmail"></span><button class="pf-link-btn" id="pfEditEmail">Edit</button></div>
+
+    <div class="pf-section pf-collapsed" id="pfPicker">
+      <h4>Choose an avatar</h4>
+      <div class="pf-picker-grid" id="pfGrid"></div>
+      <div class="pf-btn-row" style="margin-top:14px">
+        <button class="pf-btn primary" id="pfPickerSave">Save avatar</button>
+        <button class="pf-btn" id="pfPickerCancel">Cancel</button>
+      </div>
+    </div>
+
+    <div class="pf-section pf-collapsed" id="pfEmailEditor">
+      <h4>Edit email</h4>
+      <div class="pf-field"><label>Email address</label><input type="email" id="pfEmailInput" /></div>
+      <div class="pf-btn-row"><button class="pf-btn primary" id="pfSaveEmail">Save</button><button class="pf-btn" id="pfCancelEmail">Cancel</button></div>
+    </div>
+
+    <div class="pf-section">
+      <h4>Voice &amp; Reading</h4>
+      <div class="set-row">
+        <div><label for="ttsVoiceSel">Voice</label></div>
+        <select id="ttsVoiceSel" class="set-select" aria-label="Reading voice"></select>
+      </div>
+      <div class="set-row">
+        <div><label for="ttsRateSel">Reading speed</label></div>
+        <select id="ttsRateSel" class="set-select" aria-label="Reading speed">
+          <option value="0.75">0.75×</option>
+          <option value="1" selected>1×</option>
+          <option value="1.25">1.25×</option>
+          <option value="1.5">1.5×</option>
+        </select>
+      </div>
+      <div class="set-row">
+        <div><label for="ttsAutoRead">Read answers aloud automatically</label>
+          <div class="set-hint">Speak each answer as soon as it's ready.</div></div>
+        <label class="switch"><input type="checkbox" id="ttsAutoRead"/><span class="slider"></span></label>
+      </div>
+    </div>
+
+    <div class="pf-section">
+      <h4>Security</h4>
+      <button class="pf-revealer" id="pfPwReveal">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        Change Password
+      </button>
+      <div class="pf-collapsed" id="pfPwEditor" style="margin-top:12px;text-align:left">
+        <div class="pf-field"><label>Current password</label><input type="password" id="pfPwCurrent" placeholder="••••••••"/></div>
+        <div class="pf-field"><label>New password</label><input type="password" id="pfPwNew" placeholder="At least 8 characters"/></div>
+        <div class="pf-field"><label>Confirm new password</label><input type="password" id="pfPwConfirm" placeholder="Repeat new password"/></div>
+        <div class="pf-btn-row"><button class="pf-btn primary" id="pfSavePw">Update password</button><button class="pf-btn" id="pfCancelPw">Cancel</button></div>
+        <div class="pf-note">Email &amp; password changes are stored locally for now — a later phase wires them to the account API.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast">Saved</div>
+
+<script>
+/* ══════════════════════════════════════════════════════════════════════════
+   Chat with Document — REAL API wiring.
+   Endpoints: /auth/me · /docs/list · /docs/{id}/raw · /api/chat/sessions*
+              · /generate/answer?stream=true (SSE: token → verification).
+   ══════════════════════════════════════════════════════════════════════════ */
+const $ = (id) => document.getElementById(id);
+const esc = (s) => (s||'').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const token = localStorage.getItem('access_token');
+if (!token) { window.location.href = '/login'; }
+
+function apiFetch(path, opts = {}) {
+  const isForm = opts.body instanceof FormData;
+  return fetch(path, { ...opts, headers: {
+    'Authorization':'Bearer ' + token,
+    ...(isForm ? {} : { 'Content-Type':'application/json' }),
+    ...(opts.headers || {}),
+  }});
+}
+
+/* ── state ─────────────────────────────────────────────────────────────────── */
+let DOCS = [];               // {id, original_filename, status, page_count, mime_type}
+let SESSIONS = [];           // session summaries (from /api/chat/sessions)
+let activeSessionId = null;
+let activeDetail = null;     // full detail {..., messages:[]} of the active session
+let streaming = false;
+
+/* ══════════════════════════════════════════════════════════════════════════
+   VOICE OUTPUT (Part 1) — browser SpeechSynthesis TTS + animated tutor avatar.
+   No external API, no backend calls. Pure frontend.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* ── pure, testable text helpers ─────────────────────────────────────────── */
+// Split into sentences, KEEPING trailing punctuation + whitespace so the joined
+// spans reproduce the original text exactly (used for display wrapping too).
+function splitSentences(text){
+  const t = (text || '').trim();
+  if (!t) return [];
+  return t.match(/[^.!?\n]+[.!?]+[\])'"`]*\s*|[^.!?\n]+\n*|\S[^.!?\n]*$/g) || [t];
+}
+// Remove [n] / [1, 2] / [1-3] citation markers so the reader doesn't say
+// "bracket one bracket". Collapses the whitespace the marker leaves behind.
+function stripCitationsForSpeech(text){
+  return (text || '')
+    .replace(/\s*\[\s*\d+(?:\s*[,\-–]\s*\d+)*\s*\]/g, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+}
+
+/* ── tutor avatar (animated presence) ────────────────────────────────────── */
+function tutorAvatarHTML(state){
+  return `<div class="avatar asst tutor tutor-${state || 'idle'}">`
+       +   `<img src="/static/avatars/tutor.svg" alt="tutor"/>`
+       +   `<span class="tutor-ring"></span>`
+       +   `<span class="tutor-wave"><i></i><i></i><i></i></span>`
+       + `</div>`;
+}
+// Toggle a single avatar element between idle / thinking / speaking.
+function setTutorState(el, state){
+  if (!el) return;
+  el.classList.remove('tutor-idle','tutor-thinking','tutor-speaking');
+  el.classList.add('tutor-' + state);
+}
+
+/* ── settings (persisted in localStorage) ────────────────────────────────── */
+const TTS_SETTINGS = {
+  get voiceURI(){ return localStorage.getItem('ttsVoice') || ''; },
+  set voiceURI(v){ localStorage.setItem('ttsVoice', v); },
+  get rate(){ return parseFloat(localStorage.getItem('ttsRate')) || 1; },
+  set rate(v){ localStorage.setItem('ttsRate', String(v)); },
+  get autoRead(){ return localStorage.getItem('ttsAutoRead') === '1'; },
+  set autoRead(v){ localStorage.setItem('ttsAutoRead', v ? '1' : '0'); },
+  get lang(){ return localStorage.getItem('ttsLang') || 'en-US'; },  // used in Part 2
+};
+
+let _voices = [];
+function loadVoices(){
+  if (!('speechSynthesis' in window)) return;
+  _voices = window.speechSynthesis.getVoices() || [];
+  const sel = $('ttsVoiceSel');
+  if (sel){
+    const englishFirst = [..._voices].sort((a,b) =>
+      (b.lang||'').startsWith('en') - (a.lang||'').startsWith('en'));
+    sel.innerHTML = englishFirst.map(v =>
+      `<option value="${esc(v.voiceURI)}">${esc(v.name)} (${esc(v.lang)})</option>`).join('')
+      || '<option value="">System default</option>';
+    if (TTS_SETTINGS.voiceURI) sel.value = TTS_SETTINGS.voiceURI;
+  }
+}
+// Chosen voice: saved preference → first English → system default (null).
+function pickVoice(){
+  if (!_voices.length) return null;
+  if (TTS_SETTINGS.voiceURI){
+    const saved = _voices.find(v => v.voiceURI === TTS_SETTINGS.voiceURI);
+    if (saved) return saved;
+  }
+  return _voices.find(v => (v.lang||'').startsWith('en')) || _voices[0] || null;
+}
+
+/* ── TTS controller — one playback at a time, sentence-by-sentence ───────── */
+const TTS = {
+  activeBtn: null,   // the .tts-btn currently playing (null = idle)
+  spans: [],         // .tts-sentence elements of the playing message
+  avatar: null,      // the playing message's tutor avatar element
+
+  supported(){ return 'speechSynthesis' in window && 'SpeechSynthesisUtterance' in window; },
+
+  // Toggle: click the playing button to STOP; click any other to (re)start.
+  toggle(btn){
+    if (this.activeBtn === btn){ this.stop(); return; }
+    this.speak(btn);
+  },
+
+  speak(btn){
+    if (!this.supported()){ toast('Speech is not supported in this browser'); return; }
+    this.stop();  // cancel anything already playing
+
+    const wrap = btn.closest('.bubble-wrap');
+    const spans = wrap ? [...wrap.querySelectorAll('.tts-sentence')] : [];
+    // Build (spanIndex, spoken-text) queue, skipping citation-only / empty spans.
+    const queue = [];
+    spans.forEach((sp, i) => {
+      const spoken = sp.dataset.spoken || stripCitationsForSpeech(sp.textContent);
+      if (spoken) queue.push({ i, text: spoken });
+    });
+    if (!queue.length) return;
+
+    this.activeBtn = btn;
+    this.spans = spans;
+    this.avatar = wrap.closest('.row')?.querySelector('.tutor') || null;
+    this._setBtn(btn, true);
+    setTutorState(this.avatar, 'speaking');
+
+    const voice = pickVoice();
+    const rate = TTS_SETTINGS.rate;
+    queue.forEach((item, qi) => {
+      const u = new SpeechSynthesisUtterance(item.text);
+      if (voice) u.voice = voice;
+      u.rate = rate;
+      u.lang = (voice && voice.lang) || TTS_SETTINGS.lang;
+      u.onstart = () => { this._highlight(item.i); };
+      u.onend = () => {
+        this._unhighlight(item.i);
+        if (qi === queue.length - 1) this._finish();
+      };
+      window.speechSynthesis.speak(u);
+    });
+  },
+
+  stop(){
+    if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+    this._finish();
+  },
+
+  _finish(){
+    this.spans.forEach(sp => sp.classList.remove('speaking'));
+    if (this.activeBtn) this._setBtn(this.activeBtn, false);
+    setTutorState(this.avatar, 'idle');
+    this.activeBtn = null; this.spans = []; this.avatar = null;
+  },
+
+  _highlight(i){ this.spans.forEach((sp,k) => sp.classList.toggle('speaking', k === i)); },
+  _unhighlight(i){ if (this.spans[i]) this.spans[i].classList.remove('speaking'); },
+
+  _setBtn(btn, playing){
+    btn.classList.toggle('playing', playing);
+    btn.setAttribute('aria-label', playing ? 'Stop listening' : 'Listen to answer');
+    btn.setAttribute('aria-pressed', playing ? 'true' : 'false');
+    btn.innerHTML = playing
+      ? `<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg><span>Stop</span>`
+      : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5 6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.5 5.5a9 9 0 0 1 0 13"/></svg><span>Listen</span>`;
+  },
+};
+
+// The speaker button markup for a (non-abstained) assistant answer.
+function ttsButtonHTML(){
+  if (!TTS.supported()) return '';
+  return `<div class="msg-actions"><button class="tts-btn" type="button"`
+       + ` aria-label="Listen to answer" aria-pressed="false">`
+       + `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5 6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.5 5.5a9 9 0 0 1 0 13"/></svg><span>Listen</span></button></div>`;
+}
+function bindTTSButtons(root){
+  (root || document).querySelectorAll('.tts-btn').forEach(btn => {
+    if (btn._bound) return; btn._bound = true;
+    btn.onclick = () => TTS.toggle(btn);
+    btn.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); TTS.toggle(btn); } };
+  });
+}
+
+/* Render an answer body as per-sentence spans (each carrying its citation-free
+   spoken text) so TTS can highlight sentence-by-sentence while citations still
+   render as clickable badges. */
+function renderAnswerBody(text, citations){
+  const sents = splitSentences(text || '');
+  if (!sents.length) return renderContent(text, citations);
+  return sents.map((s, i) =>
+    `<span class="tts-sentence" data-si="${i}" data-spoken="${esc(stripCitationsForSpeech(s))}">`
+    + `${renderContent(s, citations)}</span>`).join('');
+}
+
+/* ── theme ─────────────────────────────────────────────────────────────────── */
+(function(){ const t = localStorage.getItem('theme')||'dark'; document.documentElement.setAttribute('data-theme',t); setThemeIcon(t); })();
+function setThemeIcon(t){ $('themeIcon').innerHTML = t==='dark'
+  ? '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>'
+  : '<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>'; }
+$('themeBtn').onclick = () => { const n = document.documentElement.getAttribute('data-theme')==='dark'?'light':'dark';
+  document.documentElement.setAttribute('data-theme',n); localStorage.setItem('theme',n); setThemeIcon(n); };
+
+function toast(m){ const t=$('toast'); t.textContent=m; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),1800); }
+function fmtTime(iso){ if(!iso) return ''; const d=new Date(iso); const now=new Date();
+  const same = d.toDateString()===now.toDateString();
+  return same ? d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})
+              : d.toLocaleDateString([], {day:'2-digit',month:'short'}); }
+
+/* ══════════════ boot ══════════════ */
+async function boot(){
+  // identity
+  try {
+    const me = await apiFetch('/auth/me').then(r=>{ if(!r.ok) throw 0; return r.json(); });
+    window._userAvatar = localStorage.getItem('avatar') || '/static/avatars/av-1.svg';
+    $('pcAvatar').src = window._userAvatar;
+    $('pcName').textContent = me.full_name || me.email;
+    $('pcSub').textContent  = me.email;
+    window._me = me;
+  } catch(e){ window.location.href='/login'; return; }
+
+  // documents + sessions in parallel
+  const [docs, sessions] = await Promise.all([
+    apiFetch('/docs/list?page_size=100').then(r=>r.ok?r.json():{items:[]}).then(d=>d.items||[]),
+    apiFetch('/api/chat/sessions').then(r=>r.ok?r.json():[]),
+  ]);
+  DOCS = docs; SESSIONS = sessions;
+  renderSessions();
+
+  // deep-link /chat/{doc_id}: open latest session for that doc, or start one.
+  const m = location.pathname.match(/^\/chat\/(.+)$/);
+  if (m){
+    const docId = decodeURIComponent(m[1]);
+    const existing = SESSIONS.find(s => s.doc_id === docId);
+    if (existing) await openSession(existing.session_id);
+    else if (DOCS.find(d => d.id === docId)) await createSession(docId);
+  } else {
+    // Fresh entry to /chat: don't abruptly restore the last session's document
+    // (that PDF load felt like a "break"). Show the welcome state and present the
+    // new-chat document options. Past sessions stay in the sidebar, one click away.
+    renderChat();
+    if (DOCS.some(d => d.status === 'ready')) openNewChatModal();
+  }
+}
+
+/* ══════════════ session sidebar ══════════════ */
+function renderSessions(){
+  if (!SESSIONS.length){ $('ssList').innerHTML = '<div style="padding:16px;color:var(--text2);font-size:12.5px">No chats yet. Click “New Chat”.</div>'; return; }
+  const groups = {};
+  SESSIONS.forEach(s => { (groups[s.doc_id] ||= { name:s.doc_name, items:[] }).items.push(s); });
+  const html = Object.values(groups).map(g => `
+    <div class="ss-doc-group">
+      <div class="ss-doc-name" title="${esc(g.name)}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg>
+        ${esc(g.name)}
+      </div>
+      ${g.items.map(s => `
+        <div class="ss-item ${s.session_id === activeSessionId ? 'active':''}" data-sid="${s.session_id}">
+          <div class="ss-item-top">
+            <div class="ss-item-preview">${esc(s.preview || s.title || 'New conversation')}</div>
+            ${s.message_count ? `<span class="ss-lock">${s.message_count} msg${s.message_count===1?'':'s'}</span>` : ''}
+          </div>
+          <div class="ss-item-time">${fmtTime(s.updated_at || s.created_at)}</div>
+        </div>`).join('')}
+    </div>`).join('');
+  $('ssList').innerHTML = html;
+  $('ssList').querySelectorAll('.ss-item').forEach(el =>
+    el.onclick = () => { openSession(el.dataset.sid); closeDrawer(); });
+}
+
+/* ══════════════ render one message ══════════════ */
+function renderContent(text, citations){
+  const byIndex = {};
+  (citations?.cited_sources || []).forEach(c => byIndex[c.index] = { ...c, dropped:false });
+  (citations?.dropped_sources || []).forEach(c => byIndex[c.index] = { ...c, dropped:true });
+  return esc(text).replace(/\[(\d+)\]/g, (mm, n) => {
+    const src = byIndex[+n];
+    const dropped = src && src.dropped;
+    return `<sup class="cite ${dropped?'dropped':''}" data-idx="${n}" tabindex="0" title="${dropped?'Unverified citation':'View source '+n}">${n}</sup>`;
+  });
+}
+function confLabel(conf, verified){
+  if (!verified) return { txt:'Unverified — could not verify', cls:'red', icon:'?' };
+  if (conf >= 0.7) return { txt:'Verified', cls:'green', icon:'✓' };
+  if (conf >= 0.4) return { txt:'Low confidence', cls:'yellow', icon:'⚠' };
+  return { txt:'Unreliable', cls:'red', icon:'✗' };
+}
+function confColor(cls){ return cls==='green'?'var(--green)':cls==='yellow'?'var(--yellow)':'var(--red)'; }
+function confidenceBlock(msg){
+  const conf = msg.confidence ?? 0, sig = msg.confidence_signals || {};
+  const verified = sig.verified !== false && msg.verified !== false;
+  const lab = confLabel(conf, verified), color = confColor(lab.cls);
+  const sigRow = (name, val) => `
+    <div class="sig"><span class="sig-name">${name}</span>
+      <span class="sig-track"><span class="sig-fill" style="width:${Math.round((val||0)*100)}%"></span></span>
+      <span class="sig-val">${(val!=null?(+val).toFixed(2):'—')}</span></div>`;
+  return `
+    <div class="conf" data-conf="${conf}">
+      <div class="conf-row">
+        <div class="conf-bar"><div class="conf-fill" style="background:${color}"></div></div>
+        <div class="conf-label" style="color:${color}">${lab.txt} ${lab.icon} · ${(conf*100).toFixed(0)}%
+          <svg class="conf-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+      </div>
+      <div class="conf-signals">
+        ${sigRow('Retrieval', sig.retrieval)}
+        ${sigRow('Citation coverage', sig.citation_coverage)}
+        ${sigRow('Groundedness', sig.groundedness)}
+        <div class="sig-flag">Verified: ${verified ? 'yes' : 'no'} · Confidence capped: ${sig.capped ? 'yes' : 'no'}</div>
+      </div>
+    </div>`;
+}
+function messageHTML(msg){
+  if (msg.role === 'user'){
+    return `<div class="row user">
+      <div class="avatar"><img src="${window._userAvatar||'/static/avatars/av-1.svg'}" alt="you"/></div>
+      <div class="bubble-wrap"><div class="bubble">${esc(msg.content)}</div></div>
+    </div>`;
+  }
+  if (msg.abstained){
+    return `<div class="row asst">
+      ${tutorAvatarHTML('idle')}
+      <div class="bubble-wrap"><div class="bubble abstained">
+        <div class="abstain-note">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+          <span>This question couldn't be answered from the uploaded documents.</span>
+        </div>
+      </div></div>
+    </div>`;
+  }
+  return `<div class="row asst">
+    ${tutorAvatarHTML('idle')}
+    <div class="bubble-wrap">
+      <div class="bubble">${renderAnswerBody(msg.content, msg.citations)}</div>
+      ${confidenceBlock(msg)}
+      ${ttsButtonHTML()}
+    </div>
+  </div>`;
+}
+
+/* ══════════════ open / render a session ══════════════ */
+async function openSession(sid){
+  activeSessionId = sid;
+  renderSessions();
+  try { activeDetail = await apiFetch('/api/chat/sessions/'+sid).then(r=>{ if(!r.ok) throw 0; return r.json(); }); }
+  catch(e){ activeDetail = null; }
+  renderChat();
+  if (activeDetail) loadPreview(activeDetail.doc_id, activeDetail.doc_name);
+}
+
+function currentDoc(){ return activeDetail ? DOCS.find(d => d.id === activeDetail.doc_id) : null; }
+
+function renderChat(){
+  const inner = $('msgsInner');
+  if (!activeDetail){
+    inner.innerHTML=''; $('emptyState').style.display='grid'; $('emptyText').textContent = SESSIONS.length ? 'Select a session, or start a New Chat.' : 'Start a New Chat to talk to a document.';
+    $('topDoc').textContent='Select a session'; $('topStatus').style.display='none';
+    setComposerEnabled(false, false);
+    return;
+  }
+  $('topDoc').textContent = activeDetail.doc_name;
+  const doc = currentDoc();
+  // Sessions are always resumable now — the only thing that can block chatting is
+  // the document itself not being processed yet.
+  const docNotReady = doc && doc.status !== 'ready';
+  const st = $('topStatus'); st.style.display='inline-flex';
+  if (docNotReady){ st.className='status-pill status-processing'; st.innerHTML=`<span class="dot"></span>${esc(doc.status)}`; }
+  else { st.className='status-pill status-ready'; st.innerHTML='<span class="dot"></span>ready'; }
+
+  const msgs = activeDetail.messages || [];
+  $('emptyState').style.display = msgs.length ? 'none':'grid';
+  if (!msgs.length) $('emptyText').textContent = 'Ask your first question about this document.';
+  inner.innerHTML = msgs.map(messageHTML).join('');
+  bindCitations();
+  bindTTSButtons(inner);
+  inner.querySelectorAll('.conf').forEach(showConfidence);
+  setComposerEnabled(!docNotReady, false);
+  scrollBottom();
+}
+function setComposerEnabled(enabled, locked){
+  $('input').disabled = !enabled;
+  $('send').disabled = !enabled || !$('input').value.trim() || streaming;
+  $('composerBox').style.opacity = enabled ? '1' : '.5';
+  $('lockedNote').classList.toggle('pf-collapsed', !locked);
+}
+function showConfidence(el){
+  el.classList.add('show');
+  const fill = el.querySelector('.conf-fill'); const conf = parseFloat(el.dataset.conf)||0;
+  requestAnimationFrame(() => { fill.style.width = (conf*100)+'%'; });
+  el.querySelector('.conf-row').onclick = () => el.classList.toggle('open');
+}
+function scrollBottom(){ const m=$('msgs'); m.scrollTop = m.scrollHeight; }
+
+/* ══════════════ citation popover ══════════════ */
+const pop = $('popover');
+function bindCitations(){
+  document.querySelectorAll('.cite').forEach(badge => {
+    badge.onclick = (e) => { e.stopPropagation(); openPopover(badge); };
+    badge.onkeydown = (e) => { if (e.key==='Enter'||e.key===' '){ e.preventDefault(); openPopover(badge);} };
+  });
+}
+function findCitation(idx){
+  for (const mm of (activeDetail?.messages||[])){
+    const all = [...(mm.citations?.cited_sources||[]).map(c=>({...c,dropped:false})),
+                 ...(mm.citations?.dropped_sources||[]).map(c=>({...c,dropped:true}))];
+    const hit = all.find(c => c.index === idx);
+    if (hit) return hit;
+  }
+  return null;
+}
+function openPopover(badge){
+  const idx = +badge.dataset.idx;
+  const c = findCitation(idx);
+  if (!c){ return; }
+  const excerpt = c.excerpt || '';
+  const long = excerpt.length > 160;
+  const shortText = long ? excerpt.slice(0,160)+'…' : excerpt;
+  pop.innerHTML = `
+    <div class="pop-head">
+      <span class="pop-badge ${c.dropped?'dropped':''}">${idx}</span>
+      <div style="min-width:0">
+        <div class="pop-src" title="${esc(c.source)}">${esc(c.source)}</div>
+        <div class="pop-page">Page ${c.page ?? '—'}</div>
+      </div>
+    </div>
+    <div class="pop-excerpt" id="popEx">${esc(shortText)}</div>
+    ${long ? '<button class="pop-toggle" id="popToggle">Show full</button>' : ''}
+    ${c.dropped ? '<div class="pop-warn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;flex-shrink:0"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg><span>This citation could not be verified against the source.</span></div>' : ''}
+  `;
+  const r = badge.getBoundingClientRect();
+  pop.style.display='block';
+  const pw = pop.offsetWidth, ph = pop.offsetHeight;
+  let left = Math.min(r.left, window.innerWidth - pw - 12);
+  let top = r.bottom + 8;
+  if (top + ph > window.innerHeight - 12) top = r.top - ph - 8;
+  pop.style.left = Math.max(12,left)+'px';
+  pop.style.top = Math.max(12,top)+'px';
+  pop.classList.add('show');
+  if (long){
+    $('popToggle').onclick = () => {
+      const full = $('popEx').textContent.endsWith('…');
+      $('popEx').textContent = full ? excerpt : shortText;
+      $('popToggle').textContent = full ? 'Show less' : 'Show full';
+    };
+  }
+}
+document.addEventListener('click', e => { if (!pop.contains(e.target) && !e.target.classList.contains('cite')) pop.classList.remove('show'); });
+window.addEventListener('scroll', () => pop.classList.remove('show'), true);
+
+/* ══════════════ document preview ══════════════ */
+function loadPreview(docId, docName){
+  $('pvName').textContent = docName || '';
+  const doc = DOCS.find(d => d.id === docId);
+  const body = $('pvBody');
+  const isPdf = !doc || (doc.mime_type||'').includes('pdf') || (docName||'').toLowerCase().endsWith('.pdf');
+  const rawUrl = `/docs/${docId}/raw?token=${encodeURIComponent(token)}`;
+  if (isPdf){
+    // Fade the PDF in on load instead of a hard flash/reflow ("breaking" look).
+    body.innerHTML = `<iframe src="${rawUrl}#toolbar=1" title="document"></iframe>`;
+    const ifr = body.querySelector('iframe');
+    if (ifr) ifr.addEventListener('load', () => ifr.classList.add('loaded'));
+  } else {
+    body.innerHTML = `<div class="pv-empty"><div>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+      <div>Inline preview isn't available for this file type.</div>
+      <a class="pv-dl" href="${rawUrl}" target="_blank" rel="noopener">Open ${esc(docName||'document')} ↗</a>
+    </div></div>`;
+  }
+}
+/* Preview open/close. On narrow screens the panel is a full-height overlay, so we
+   (a) start it CLOSED on load — it must never cover the chat unprompted — and
+   (b) pair it with a tap-away backdrop + an explicit × close button. On desktop
+   it's just the side panel the topbar button shows/hides. */
+function pvIsNarrow(){ return window.matchMedia('(max-width:1200px)').matches; }
+function setPreview(open){
+  $('preview').classList.toggle('collapsed', !open);
+  $('previewBtn').classList.toggle('on', open);
+  $('previewOverlay').classList.toggle('show', open && pvIsNarrow());
+}
+$('previewBtn').onclick   = () => setPreview($('preview').classList.contains('collapsed'));
+$('pvClose').onclick      = () => setPreview(false);
+$('previewOverlay').onclick = () => setPreview(false);
+// Never let the document panel cover the chat on a phone at load time.
+if (pvIsNarrow()) setPreview(false);
+// Keep backdrop state coherent when rotating / crossing the breakpoint.
+window.addEventListener('resize', () => {
+  const open = !$('preview').classList.contains('collapsed');
+  $('previewOverlay').classList.toggle('show', open && pvIsNarrow());
+});
+
+/* ══════════════ composer + real SSE streaming ══════════════ */
+const input = $('input'), sendBtn = $('send');
+input.addEventListener('input', () => {
+  input.style.height='auto'; input.style.height=Math.min(input.scrollHeight,112)+'px';
+  const doc = currentDoc();
+  const blocked = !activeDetail || (doc && doc.status !== 'ready');
+  sendBtn.disabled = streaming || !input.value.trim() || blocked;
+});
+input.addEventListener('keydown', e => { if (e.key==='Enter' && !e.shiftKey){ e.preventDefault(); sendMessage(); } });
+sendBtn.onclick = sendMessage;
+
+async function sendMessage(){
+  const text = input.value.trim();
+  if (!text || streaming || !activeDetail) return;
+  const doc = currentDoc();
+  if (doc && doc.status !== 'ready') return;   // only the doc can block; sessions never lock
+  TTS.stop();  // never talk over a new question
+  const sid = activeSessionId, docId = activeDetail.doc_id;
+
+  // 1. optimistic user bubble + persist
+  const userMsg = { role:'user', content:text, citations:null };
+  activeDetail.messages.push(userMsg);
+  input.value=''; input.style.height='auto';
+  $('emptyState').style.display='none';
+  $('msgsInner').insertAdjacentHTML('beforeend', messageHTML(userMsg));
+  scrollBottom();
+  apiFetch('/api/chat/sessions/'+sid+'/messages', { method:'POST', body:JSON.stringify({ role:'user', content:text }) }).catch(()=>{});
+
+  // 2. streaming assistant bubble
+  streaming = true; setComposerEnabled(false, false);
+  const row = document.createElement('div');
+  row.className='row asst';
+  // The tutor avatar starts in THINKING state while tokens stream in.
+  row.innerHTML = `${tutorAvatarHTML('thinking')}<div class="bubble-wrap"><div class="bubble"><span class="stream-text"></span><span class="cursor-blink"></span></div></div>`;
+  $('msgsInner').appendChild(row);
+  const textSpan = row.querySelector('.stream-text');
+  scrollBottom();
+
+  let fullAnswer = '';
+  await streamAnswer(text, docId,
+    (tok) => { if (tok.text){ fullAnswer += tok.text; textSpan.textContent = fullAnswer; scrollBottom(); }
+               if (tok.full_answer) fullAnswer = tok.full_answer; },
+    (resp) => finalizeAnswer(sid, row, resp, fullAnswer),
+    (err)  => finalizeError(row, err)
+  );
+}
+
+/* POST /generate/answer?stream=true and parse the SSE frames (token/verification). */
+async function streamAnswer(query, docId, onToken, onVerify, onError){
+  let resp;
+  try {
+    resp = await apiFetch('/generate/answer?stream=true', { method:'POST', body:JSON.stringify({ query, doc_id:docId }) });
+  } catch(e){ onError({ error:'network' }); return; }
+
+  const ctype = resp.headers.get('content-type') || '';
+  if (!resp.ok){
+    let body={}; try{ body = await resp.json(); }catch(e){}
+    onError(body.detail ? { error:'no_content', detail:body.detail } : body); return;
+  }
+  // Kill-switch / non-stream mode: server returned plain JSON, not an event stream.
+  if (!ctype.includes('event-stream')){
+    let body; try{ body = await resp.json(); }catch(e){ onError({error:'bad_response'}); return; }
+    if (body.answer) onToken({ text: body.answer, full_answer: body.answer });
+    onVerify(body); return;
+  }
+
+  const reader = resp.body.getReader(); const dec = new TextDecoder(); let buf='';
+  while (true){
+    const { value, done } = await reader.read(); if (done) break;
+    buf += dec.decode(value, { stream:true });
+    let i;
+    while ((i = buf.indexOf('\n\n')) >= 0){
+      const frame = buf.slice(0, i); buf = buf.slice(i+2);
+      let ev='message', data='';
+      frame.split('\n').forEach(line => {
+        if (line.startsWith('event:')) ev = line.slice(6).trim();
+        else if (line.startsWith('data:')) data += line.slice(5).trim();
+      });
+      if (!data) continue;
+      let obj; try { obj = JSON.parse(data); } catch(e){ continue; }
+      if (ev === 'token') onToken(obj);
+      else if (ev === 'verification') onVerify(obj);
+    }
+  }
+}
+
+/* Map the API response citations (chunk-ordered) → the index-keyed shape the
+   renderer uses. [n] refers to the 1-based position in the full citation list;
+   a marker whose chunk is in dropped_sources is flagged as a dropped citation. */
+function normalizeCitations(resp){
+  const all = resp.citations || resp.all_sources || [];
+  const droppedIds = new Set((resp.dropped_sources||[]).map(c=>c.chunk_id));
+  const cited_sources = [], dropped_sources = [];
+  all.forEach((c, i) => {
+    const rec = { index:i+1, source:c.source, page:c.page_number, excerpt:c.text_excerpt };
+    (droppedIds.has(c.chunk_id) ? dropped_sources : cited_sources).push(rec);
+  });
+  return { cited_sources, dropped_sources };
+}
+
+function finalizeAnswer(sid, row, resp, fallbackText){
+  streaming = false;
+  if (resp.error === 'generation_failed' || resp.error === 'generation_not_configured'){
+    return finalizeError(row, resp);
+  }
+  const msg = {
+    role:'assistant',
+    content: (resp.answer ?? fallbackText ?? '').trim(),
+    citations: normalizeCitations(resp),
+    confidence: resp.confidence ?? 0,
+    confidence_signals: resp.confidence_signals || {},
+    abstained: !!resp.abstained,
+    verified: resp.verified !== false,
+  };
+  activeDetail.messages.push(msg);
+  row.querySelector('.bubble-wrap').innerHTML =
+    (msg.abstained
+      ? `<div class="bubble abstained"><div class="abstain-note"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg><span>This question couldn't be answered from the uploaded documents.</span></div></div>`
+      : `<div class="bubble">${renderAnswerBody(msg.content, msg.citations)}</div>${confidenceBlock(msg)}${ttsButtonHTML()}`);
+  // Answer complete → tutor returns to a calm idle presence.
+  setTutorState(row.querySelector('.tutor'), 'idle');
+  bindCitations();
+  bindTTSButtons(row);
+  const conf = row.querySelector('.conf'); if (conf) showConfidence(conf);
+  setComposerEnabled(true, false); scrollBottom();
+
+  // Auto-read: only AFTER the full answer + verification (done=true already
+  // passed) and only for a real, non-abstained answer.
+  if (TTS_SETTINGS.autoRead && !msg.abstained && msg.content){
+    const btn = row.querySelector('.tts-btn');
+    if (btn) setTimeout(() => TTS.speak(btn), 60);
+  }
+
+  // persist assistant turn + refresh sidebar preview/timestamp
+  apiFetch('/api/chat/sessions/'+sid+'/messages', { method:'POST', body:JSON.stringify({
+    role:'assistant', content:msg.content, citations:msg.citations,
+    confidence:msg.confidence, confidence_signals:msg.confidence_signals,
+    abstained:msg.abstained, verified:msg.verified,
+  })}).catch(()=>{}).then(refreshSessionsList);
+}
+function finalizeError(row, err){
+  streaming = false;
+  const detail = err && err.detail ? esc(err.detail)
+    : (err && err.error === 'generation_not_configured') ? 'Generation is not configured on the server.'
+    : 'The model is temporarily unavailable (this can happen on API rate limits). Please try again.';
+  row.querySelector('.bubble-wrap').innerHTML =
+    `<div class="bubble abstained"><div class="abstain-note"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg><span>${detail}</span></div></div>`;
+  setTutorState(row.querySelector('.tutor'), 'idle');
+  setComposerEnabled(true, false); scrollBottom();
+}
+async function refreshSessionsList(){
+  try { SESSIONS = await apiFetch('/api/chat/sessions').then(r=>r.ok?r.json():SESSIONS); renderSessions(); } catch(e){}
+}
+
+/* ══════════════ new chat / doc picker ══════════════ */
+function openNewChatModal(){
+  if (!DOCS.length){ toast('Upload a document first'); return; }
+  $('docList').innerHTML = DOCS.map(d => {
+    const ready = d.status === 'ready';
+    return `<div class="doc-opt ${ready?'':'disabled'}" data-doc="${ready?d.id:''}" title="${ready?'':'Still processing'}">
+      <div class="doc-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
+      <div class="doc-meta"><div class="dm-name">${esc(d.original_filename)}</div>
+        <div class="dm-sub">${d.page_count||0} pages · ${esc(d.status)}</div></div>
+    </div>`; }).join('');
+  $('modalOverlay').classList.add('show');
+  $('docList').querySelectorAll('.doc-opt').forEach(el => { if (el.dataset.doc) el.onclick = () => createSession(el.dataset.doc); });
+}
+$('newChatBtn').onclick = openNewChatModal;
+$('modalClose').onclick = () => $('modalOverlay').classList.remove('show');
+$('modalOverlay').onclick = (e) => { if (e.target === $('modalOverlay')) $('modalOverlay').classList.remove('show'); };
+
+async function createSession(docId){
+  $('modalOverlay').classList.remove('show');
+  try {
+    const detail = await apiFetch('/api/chat/sessions', { method:'POST', body:JSON.stringify({ doc_id:docId }) })
+      .then(r=>{ if(!r.ok) throw 0; return r.json(); });
+    // A new session leaves the others resumable; just refresh the sidebar list.
+    SESSIONS = await apiFetch('/api/chat/sessions').then(r=>r.ok?r.json():[]);
+    activeSessionId = detail.session_id; activeDetail = detail;
+    renderSessions(); renderChat(); loadPreview(detail.doc_id, detail.doc_name);
+    input.focus();
+  } catch(e){ toast('Could not start chat'); }
+}
+
+/* Sessions are never auto-locked on leave — every conversation stays resumable,
+   so there is no lock-on-unload handler. Clicking a session in the sidebar
+   reloads its full history (see openSession) and chatting continues in place. */
+
+/* ══════════════ mobile drawer ══════════════ */
+function openDrawer(){ $('sessions').classList.add('open'); $('drawerOverlay').classList.add('show'); }
+function closeDrawer(){ $('sessions').classList.remove('open'); $('drawerOverlay').classList.remove('show'); }
+$('hb').onclick = openDrawer;
+$('drawerOverlay').onclick = closeDrawer;
+
+/* ══════════════ profile popup ══════════════ */
+const AVATAR_COUNT = 16;
+let pfSelectedAvatar = localStorage.getItem('avatar') || '/static/avatars/av-1.svg';
+let pfPendingAvatar = pfSelectedAvatar;
+function openProfile(){
+  $('pfName').textContent  = $('pcName').textContent || 'User';
+  $('pfEmail').textContent = $('pcSub').textContent || '';
+  $('pfAvatarImg').src = pfSelectedAvatar;
+  ['pfPicker','pfEmailEditor','pfPwEditor'].forEach(id=>$(id).classList.add('pf-collapsed'));
+  $('pfOverlay').classList.add('show');
+  closeDrawer();
+}
+function closeProfile(){ $('pfOverlay').classList.remove('show'); }
+$('profileCard').onclick = openProfile;
+$('pfClose').onclick = closeProfile;
+$('pfOverlay').onclick = (e) => { if (e.target.id==='pfOverlay') closeProfile(); };
+function pfBuildGrid(){
+  const g = $('pfGrid'); g.innerHTML='';
+  for (let i=1;i<=AVATAR_COUNT;i++){
+    const path = `/static/avatars/av-${i}.svg`;
+    const div = document.createElement('div');
+    div.className = 'pf-opt' + (path===pfPendingAvatar?' selected':'');
+    div.innerHTML = `<img src="${path}" alt="avatar ${i}"/>`;
+    div.onclick = () => { pfPendingAvatar = path; g.querySelectorAll('.pf-opt').forEach(o=>o.classList.remove('selected')); div.classList.add('selected'); };
+    g.appendChild(div);
+  }
+}
+$('pfAvatarBig').onclick = () => { pfPendingAvatar = pfSelectedAvatar; pfBuildGrid(); $('pfPicker').classList.toggle('pf-collapsed'); };
+$('pfPickerCancel').onclick = () => $('pfPicker').classList.add('pf-collapsed');
+$('pfPickerSave').onclick = () => {
+  pfSelectedAvatar = pfPendingAvatar; window._userAvatar = pfSelectedAvatar;
+  $('pfAvatarImg').src = pfSelectedAvatar; $('pcAvatar').src = pfSelectedAvatar;
+  localStorage.setItem('avatar', pfSelectedAvatar);
+  $('pfPicker').classList.add('pf-collapsed'); toast('Avatar updated');
+};
+$('pfEditEmail').onclick = () => { $('pfEmailInput').value = $('pfEmail').textContent; $('pfEmailEditor').classList.remove('pf-collapsed'); };
+$('pfCancelEmail').onclick = () => $('pfEmailEditor').classList.add('pf-collapsed');
+$('pfSaveEmail').onclick = () => {
+  const v = $('pfEmailInput').value.trim();
+  if (!v || !v.includes('@')){ toast('Enter a valid email'); return; }
+  $('pfEmail').textContent = v; console.log('[profile] email change →', v, '(local only; no backend endpoint yet)');
+  $('pfEmailEditor').classList.add('pf-collapsed'); toast('Email updated (local)');
+};
+$('pfPwReveal').onclick = () => $('pfPwEditor').classList.toggle('pf-collapsed');
+$('pfCancelPw').onclick = () => { $('pfPwEditor').classList.add('pf-collapsed'); ['pfPwCurrent','pfPwNew','pfPwConfirm'].forEach(id=>$(id).value=''); };
+$('pfSavePw').onclick = () => {
+  const cur=$('pfPwCurrent').value, nw=$('pfPwNew').value, cf=$('pfPwConfirm').value;
+  if (!cur || !nw){ toast('Fill all fields'); return; }
+  if (nw.length < 8){ toast('New password too short'); return; }
+  if (nw !== cf){ toast('Passwords do not match'); return; }
+  console.log('[profile] password change requested (local only; no backend endpoint yet)');
+  ['pfPwCurrent','pfPwNew','pfPwConfirm'].forEach(id=>$(id).value='');
+  $('pfPwEditor').classList.add('pf-collapsed'); toast('Password updated (local)');
+};
+
+/* ══════════════ voice & reading settings wiring ══════════════ */
+(function initVoiceSettings(){
+  // Reflect stored prefs into the controls.
+  $('ttsRateSel').value = String(TTS_SETTINGS.rate);
+  $('ttsAutoRead').checked = TTS_SETTINGS.autoRead;
+
+  $('ttsRateSel').addEventListener('change', e => { TTS_SETTINGS.rate = parseFloat(e.target.value) || 1; });
+  $('ttsAutoRead').addEventListener('change', e => { TTS_SETTINGS.autoRead = e.target.checked; });
+  $('ttsVoiceSel').addEventListener('change', e => { TTS_SETTINGS.voiceURI = e.target.value; });
+
+  if ('speechSynthesis' in window){
+    loadVoices();
+    // Voice list is populated asynchronously in most browsers.
+    window.speechSynthesis.onvoiceschanged = loadVoices;
+  } else {
+    // No TTS support → disable the controls, keep the UI honest.
+    ['ttsVoiceSel','ttsRateSel','ttsAutoRead'].forEach(id => { const el=$(id); if (el) el.disabled = true; });
+    const sel = $('ttsVoiceSel'); if (sel) sel.innerHTML = '<option>Not supported in this browser</option>';
+  }
+})();
+
+/* start narrow screens with the preview collapsed */
+if (window.innerWidth <= 1200){ $('preview').classList.add('collapsed'); $('previewBtn').classList.remove('on'); }
+
+boot();
+</script>
+</body>
+</html>
