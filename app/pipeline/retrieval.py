@@ -33,9 +33,7 @@ import re
 from dataclasses import dataclass, field
 from typing import Callable
 
-import httpx
-
-from app.config import get_settings
+from app.generation.prompt_builder import build_grounded_prompt
 
 logger = logging.getLogger(__name__)
 
@@ -217,6 +215,68 @@ def hybrid_search(
     return results
 
 
+# ── Whole-document retrieval (Scope-Aware Routing, GLOBAL scope) ──────────────
+
+def fetch_whole_document(chroma_client, user_id: str, doc_id: str) -> list[ScoredChunk]:
+    """Fetch EVERY chunk of one document as ScoredChunks, in reading order.
+
+    The GLOBAL-scope counterpart to hybrid_search: for questions that operate over
+    the whole document ("list all X", "summarize", "build a table"), top-k
+    retrieval DROPS the very chunks a complete answer needs. This bypasses
+    dense/BM25/RRF/rerank entirely and returns the full document ordered by
+    chunk_index, so the model sees the complete set.
+
+    Unlike context_expander.fetch_doc_chunks (which returns ChunkMeta for the merge
+    algorithm), this returns ScoredChunk with source/page_number preserved, so the
+    prompt builder's [n] labels and the endpoint's citations work unchanged. Any
+    Chroma error yields [] and the caller falls back to normal top-k retrieval.
+    """
+    collection_name = f"user_{user_id}"
+    try:
+        coll = chroma_client.get_collection(collection_name)
+        fetched = coll.get(where={"doc_id": doc_id}, include=["documents", "metadatas"])
+    except Exception as exc:
+        logger.warning("fetch_whole_document failed for doc_id=%s: %s", doc_id, exc)
+        return []
+
+    ids = fetched.get("ids") or []
+    docs = fetched.get("documents") or []
+    metas = fetched.get("metadatas") or []
+
+    items: list[tuple[int, str, str, dict]] = []
+    for cid, text, meta in zip(ids, docs, metas):
+        meta = meta or {}
+        try:
+            ci = int(meta.get("chunk_index", 0))
+        except (TypeError, ValueError):
+            ci = 0
+        items.append((ci, cid, text or "", meta))
+
+    items.sort(key=lambda t: t[0])  # reading order — chunk_index ascending
+
+    out: list[ScoredChunk] = []
+    for ci, cid, text, meta in items:
+        try:
+            page = int(meta.get("page_number", 0) or 0)
+        except (TypeError, ValueError):
+            page = 0
+        out.append(ScoredChunk(
+            chunk_id=cid,
+            text=text,
+            doc_id=meta.get("doc_id", doc_id),
+            source=meta.get("source", ""),
+            page_number=page,
+            # Not rank-scored — the whole doc is included; a uniform positive keeps
+            # any fused_score consumer (e.g. the retrieval signal) well-behaved.
+            fused_score=1.0,
+            dense_rank=None,
+            bm25_rank=None,
+            metadata=meta,
+        ))
+    logger.info("fetch_whole_document user=%s doc=%s chunks=%d", user_id, doc_id, len(out))
+    return out
+
+
 # ── Cross-encoder reranking ───────────────────────────────────────────────────
 
 _cross_encoder = None  # module-level singleton, lazy-loaded on first rerank call
@@ -271,45 +331,52 @@ def rerank(
 
 # ── LLM helpers (shared by generate + groundedness) ──────────────────────────
 
-def _call_hf_api(prompt: str) -> str:
-    """POST to HuggingFace Inference API.  Returns generated text or empty string on failure."""
-    settings = get_settings()
-    if not settings.hf_api_token:
-        logger.warning("HF_API_TOKEN not configured — LLM call skipped")
-        return ""
-    url = f"https://api-inference.huggingface.co/models/{settings.hf_gen_model}"
-    headers = {"Authorization": f"Bearer {settings.hf_api_token}"}
-    try:
-        resp = httpx.post(
-            url,
-            json={"inputs": prompt, "parameters": {"max_new_tokens": 300, "temperature": 0.1}},
-            headers=headers,
-            timeout=30,
-        )
-        resp.raise_for_status()
-        data = resp.json()
-        if isinstance(data, list) and data:
-            return data[0].get("generated_text", "")
-        return str(data)
-    except Exception as exc:
-        logger.error("HF API call failed: %s", exc)
-        return ""
+# The old direct HuggingFace inference call was deleted (Story 0/1): that endpoint
+# (api-inference.huggingface.co) is dead — confirmed in embedding_providers.py and by
+# live testing — and it silently returned "" on every call. Generation now flows
+# through the swappable GenerationProvider seam (app/generation/*, wired onto
+# app.state.llm_fn in main.py's lifespan). generate_answer/groundedness_check require
+# an explicit llm_fn passed by the /generate/answer endpoint; there is NO internal
+# fallback. When no provider is configured, llm_fn is None and the endpoint returns
+# the honest "generation_not_configured" response.
 
 
 def generate_answer(
     query: str,
     source_chunks: list[ScoredChunk],
     llm_fn: Callable[[str], str] | None = None,
+    doc_chunks_fetcher: Callable[[str], list] | None = None,
+    query_type=None,
+    thin_context: bool = False,
+    answer_task=None,
 ) -> str:
-    """Generate an answer grounded in source_chunks.  Used by /generate/answer."""
-    call = llm_fn if llm_fn is not None else _call_hf_api
-    context = "\n---\n".join(c.text for c in source_chunks)
-    prompt = (
-        f"Context:\n{context}\n\n"
-        f"Question: {query}\n\n"
-        "Answer based ONLY on the context above. Be concise and cite the source:"
+    """
+    Generate an answer grounded in source_chunks.  Used by /generate/answer.
+
+    Requires an explicit llm_fn (the dead default HF path was removed — see the note
+    above). Callers that have no generation backend configured must not call this;
+    the /generate/answer endpoint guards on llm_fn is None and returns an honest
+    "generation_not_configured" response instead.
+
+    Story 5: doc_chunks_fetcher (doc_id -> list[ChunkMeta]) is passed through to
+    the prompt builder to widen each chunk with its neighbors. None (the default)
+    leaves the pre-Story-5 behavior — the raw chunk text — untouched.
+
+    Generation-quality fix: query_type (Part 3) and thin_context (Part 4b) are
+    forwarded to the prompt builder to append the response-style hint / limited-
+    material note. Both default to off, preserving the pre-fix prompt.
+    """
+    if llm_fn is None:
+        raise RuntimeError("generation_not_configured: generate_answer requires an llm_fn")
+    # Story 2: the grounded prompt labels each source [n] with its filename+page,
+    # specifies the [n] citation format, and gives the model an abstention clause.
+    # The old bare "Context:\n...---..." blob (no labels, no format, no escape hatch)
+    # is gone — parsing/abstention now happen on the response (see citation_parser).
+    prompt = build_grounded_prompt(
+        query, source_chunks, doc_chunks_fetcher=doc_chunks_fetcher,
+        query_type=query_type, thin_context=thin_context, answer_task=answer_task,
     )
-    return call(prompt).strip()
+    return llm_fn(prompt).strip()
 
 
 # ── Groundedness check ────────────────────────────────────────────────────────
@@ -319,6 +386,7 @@ def groundedness_check(
     answer_draft: str,
     source_chunks: list[ScoredChunk],
     llm_fn: Callable[[str], str] | None = None,
+    answer_task=None,
 ) -> dict:
     """
     Verify that every claim in answer_draft is supported by source_chunks.
@@ -336,44 +404,113 @@ def groundedness_check(
         {
             "grounded":           bool,
             "confidence":         float,   # 0.0–1.0
-            "unsupported_claims": list[str]
+            "unsupported_claims": list[str],
+            "verified":           bool,    # True = verification ran; False = it didn't
+            "error":              str | None,  # set only when verification failed
         }
 
-    Failure policy: if the LLM call fails, returns grounded=True (fail open)
-    so a connectivity issue never silently swallows the user's answer.
+    Failure policy: FAIL CLOSED. If the verification LLM call fails or is not
+    configured, return grounded=False, confidence=0.0, verified=False. A total
+    outage of the verifier must NOT look like perfect confidence to the user — the
+    frontend shows "unverified" instead of either "confident" or "wrong".
     """
-    call = llm_fn if llm_fn is not None else _call_hf_api
+    if llm_fn is None:
+        # No verifier configured (the dead HF default was removed — Story 1 wires a
+        # real provider). Fail closed rather than pretend the answer was verified.
+        return {
+            "grounded": False,
+            "confidence": 0.0,
+            "unsupported_claims": [],
+            "verified": False,
+            "error": "verification_unavailable",
+        }
+    call = llm_fn
 
+    # Scope-Aware Routing (Phase 3): for INFER (hypothetical / counterfactual)
+    # answers the "must be DIRECTLY supported" test is wrong — a good inference is
+    # deliberately NOT literal in the sources. The strict prompt marks such answers
+    # unsupported and collapses confidence. For INFER we check the real failure mode
+    # instead: fabricated facts / entities that aren't in the sources, allowing
+    # reasonable inference. Every OTHER task keeps the original strict prompt
+    # verbatim (default None → unchanged behavior).
+    is_infer = getattr(answer_task, "value", answer_task) == "infer"
     context = "\n---\n".join(c.text for c in source_chunks[:8])
-    prompt = (
-        "You are a fact-checking assistant.\n\n"
-        "Source excerpts (the ONLY information allowed to support the answer):\n"
-        f"{context}\n\n"
-        f"Query: {query}\n\n"
-        f"Answer to verify:\n{answer_draft}\n\n"
-        "List every claim in the answer that is NOT directly supported by the source "
-        "excerpts above.  If all claims are supported, write exactly: none\n"
-        "Unsupported claims:"
-    )
+    if is_infer:
+        prompt = (
+            "You are a fact-checking assistant evaluating a REASONING answer.\n\n"
+            "Source excerpts (the only established facts):\n"
+            f"{context}\n\n"
+            f"Query: {query}\n\n"
+            f"Answer to verify:\n{answer_draft}\n\n"
+            "The answer may draw REASONABLE INFERENCES from the sources — those are "
+            "acceptable. List only claims that introduce NEW FACTS or ENTITIES that "
+            "are neither stated in nor reasonably inferable from the sources. If there "
+            "are none, write exactly: none\n"
+            "Unsupported claims:"
+        )
+    else:
+        prompt = (
+            "You are a fact-checking assistant.\n\n"
+            "Source excerpts (the ONLY information allowed to support the answer):\n"
+            f"{context}\n\n"
+            f"Query: {query}\n\n"
+            f"Answer to verify:\n{answer_draft}\n\n"
+            "List every claim in the answer that is NOT directly supported by the source "
+            "excerpts above.  If all claims are supported, write exactly: none\n"
+            "Unsupported claims:"
+        )
 
-    response = call(prompt).strip()
+    try:
+        response = call(prompt).strip()
+    except Exception as exc:
+        # Any error from the verifier call is a verification failure, not a pass.
+        logger.warning("Groundedness verification call failed: %s", exc)
+        response = ""
 
     if not response:
-        # LLM unavailable — fail open
-        return {"grounded": True, "confidence": 1.0, "unsupported_claims": []}
+        # Verifier unavailable (empty output or raised) — FAIL CLOSED.
+        return {
+            "grounded": False,
+            "confidence": 0.0,
+            "unsupported_claims": [],
+            "verified": False,
+            "error": "verification_unavailable",
+        }
 
-    first_line = response.lower().split("\n")[0].strip().rstrip(".")
-    if first_line in _GROUNDEDNESS_SUPPORTED:
-        return {"grounded": True, "confidence": 1.0, "unsupported_claims": []}
+    first_line = response.lower().split("\n")[0].strip().rstrip(".:")
+    # Models rarely reply with the single literal token we ask for. Treat any clear
+    # "nothing is unsupported" phrasing as fully grounded — otherwise a perfect
+    # answer whose verifier says "No unsupported claims." gets that very sentence
+    # miscounted as an unsupported claim, collapsing confidence to 0.
+    _GROUNDED_PHRASES = (
+        "no unsupported", "all claims are supported", "all of the claims are supported",
+        "everything is supported", "all supported", "fully supported", "none are unsupported",
+    )
+    if (
+        first_line in _GROUNDEDNESS_SUPPORTED
+        or first_line.startswith("none")
+        or first_line in {"no", "n/a", "na"}
+        or any(p in first_line for p in _GROUNDED_PHRASES)
+    ):
+        return {"grounded": True, "confidence": 1.0, "unsupported_claims": [], "verified": True}
 
+    # Collect the listed claims, skipping meta/negative lines (headers, a restated
+    # "no unsupported claims", etc.) that are not themselves claims.
+    _META = ("no unsupported", "all supported", "fully supported", "all claims are supported",
+             "everything is supported", "unsupported claims", "here are", "the following",
+             "no claims")
     unsupported: list[str] = []
     for line in response.split("\n"):
-        clean = line.strip().lstrip("-•*123456789. ").strip()
-        if clean and len(clean) > 8:
-            unsupported.append(clean)
+        clean = line.strip().lstrip("-•*0123456789.) ").strip()
+        cl = clean.lower()
+        if not clean or len(clean) <= 8:
+            continue
+        if cl == "none" or any(m in cl for m in _META):
+            continue
+        unsupported.append(clean)
 
     if not unsupported:
-        return {"grounded": True, "confidence": 0.85, "unsupported_claims": []}
+        return {"grounded": True, "confidence": 0.85, "unsupported_claims": [], "verified": True}
 
     # Confidence = fraction of answer sentences that ARE supported
     try:
@@ -393,4 +530,5 @@ def groundedness_check(
         "grounded": False,
         "confidence": confidence,
         "unsupported_claims": unsupported,
+        "verified": True,
     }

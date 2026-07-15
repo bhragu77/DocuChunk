@@ -107,6 +107,19 @@ def _metadata_for(ec: EmbeddedChunk) -> dict:
 
     content_hash + doc_version are the keys the reconcile contract diffs on;
     doc_id + source + page_number are what retrieval.py reads back.
+
+    Story 5 (context expansion): char_start / char_end are now stored here too.
+    They previously lived only in the SQL chunks table, but expansion runs at
+    RETRIEVAL time — when we hold Chroma ScoredChunks, not SQL rows — and needs
+    the offsets to interval-merge a chunk with its neighbors (see
+    app/generation/context_expander.py). These offsets index the joined
+    full-document text: joined_text[char_start:char_end] == chunk.text.
+
+    RE-INDEXING NOTE: documents ingested BEFORE this change lack char_start /
+    char_end in their Chroma metadata, so they cannot be expanded. Re-upload
+    (delete + re-ingest) any such document to gain expansion — chunk_id is
+    deterministic from (doc_id, char_start, char_end), so a re-upload overwrites
+    the same vectors in place rather than duplicating them.
     """
     c = ec.chunk
     m = c.metadata or {}
@@ -114,6 +127,8 @@ def _metadata_for(ec: EmbeddedChunk) -> dict:
         "doc_id": c.doc_id,
         "page_number": c.page_number,
         "chunk_index": c.chunk_index,
+        "char_start": c.char_start,
+        "char_end": c.char_end,
         "content_hash": ec.content_hash,
         "doc_version": ec.doc_version,
         "source": m.get("source", ""),

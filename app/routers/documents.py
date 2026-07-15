@@ -10,7 +10,7 @@ from app.database import get_db
 from app.models.user import User
 from app.models.document import Document, DocumentStatus
 from app.schemas.document import DocumentListResponse, DocumentResponse, DeleteResponse
-from app.core.dependencies import get_current_user, get_chroma, get_arq_pool
+from app.core.dependencies import get_current_user, get_current_user_optional as _optional_current_user, get_chroma, get_arq_pool
 from app.pipeline.orchestrator import run_pipeline
 from app.config import get_settings
 
@@ -208,6 +208,42 @@ def get_document(
     """Retrieve a single document by ID (must belong to the current user)."""
     doc = _get_doc_or_404(doc_id, current_user.id, db)
     return doc
+
+
+@router.get("/{doc_id}/raw")
+def get_document_raw(
+    doc_id: str,
+    token: str | None = Query(default=None),
+    db: Session = Depends(get_db),
+    current_user: User | None = Depends(_optional_current_user),
+):
+    """Serve the raw uploaded file INLINE for the chat doc-preview panel.
+
+    Auth is header OR `?token=` query param: an <iframe src> can't set an
+    Authorization header, so the frontend appends the JWT as a query param. The
+    file is still strictly scoped to its owner — a valid token for a different
+    user gets a 404, same as an unknown id.
+    """
+    from fastapi.responses import FileResponse
+    from app.core.security import verify_access_token
+
+    user = current_user
+    if user is None and token:
+        payload = verify_access_token(token)
+        if payload is not None:
+            user = db.query(User).filter(User.id == payload.get("sub")).first()
+    if user is None or not getattr(user, "is_active", False):
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
+
+    doc = _get_doc_or_404(doc_id, user.id, db)
+    if not os.path.exists(doc.file_path):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="File no longer on disk")
+    return FileResponse(
+        doc.file_path,
+        media_type=doc.mime_type or "application/octet-stream",
+        filename=doc.original_filename,
+        content_disposition_type="inline",
+    )
 
 
 @router.delete("/{doc_id}", response_model=DeleteResponse)
