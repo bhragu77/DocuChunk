@@ -1,0 +1,54 @@
+# Production overlay — use ALONGSIDE the base file:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+#
+# What it changes vs docker-compose.yml:
+#   * runs in production mode (APP_ENV=production, DEBUG off);
+#   * stops publishing the app on host :8000 — only Caddy (443/80) is reachable;
+#   * adds a Caddy reverse proxy that terminates HTTPS in front of the app;
+#   * persists the downloaded embedding model across restarts (hf_cache), so the
+#     ~90MB all-MiniLM model isn't re-fetched on every container restart;
+#   * turns on the Redis-backed answer cache (Redis is already running here).
+#
+# Everything else (worker, chroma HTTP server, redis, shared volumes) is inherited
+# unchanged from docker-compose.yml.
+
+services:
+  app:
+    # !reset clears the base file's "8000:8000" host publish (Compose otherwise
+    # MERGES port lists rather than replacing). The app stays reachable inside the
+    # Docker network as app:8000 — only Caddy is published to the host.
+    ports: !reset []
+    environment:
+      - APP_ENV=production
+      - DEBUG=false
+      - CACHE_BACKEND=redis         # repeated queries skip the whole chain
+    volumes:
+      - hf_cache:/root/.cache       # persist the embedding model download
+    restart: unless-stopped
+
+  worker:
+    environment:
+      - APP_ENV=production
+      - DEBUG=false
+    volumes:
+      - hf_cache:/root/.cache       # worker loads the same model at startup
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data            # TLS certs + account keys (must persist)
+      - caddy_config:/config
+    depends_on:
+      - app
+
+volumes:
+  hf_cache:
+  caddy_data:
+  caddy_config:

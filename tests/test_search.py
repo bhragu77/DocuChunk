@@ -371,14 +371,68 @@ def test_groundedness_passes_fully_supported_answer():
     assert result["unsupported_claims"] == []
 
 
-def test_groundedness_fails_open_when_llm_unavailable():
-    """If the LLM returns empty string (API failure), fail open — return grounded=True."""
+def test_groundedness_fails_closed_when_llm_unavailable():
+    """Story 0 BUG 2: if the verifier returns an empty string (API failure), FAIL
+    CLOSED — grounded=False, confidence=0.0, verified=False. A verifier outage must
+    never look like perfect confidence."""
     source = _source_chunk("Some content.")
     result = groundedness_check(
         query="test", answer_draft="Some answer.", source_chunks=[source],
         llm_fn=lambda p: "",
     )
-    assert result["grounded"] is True
+    assert result["grounded"] is False
+    assert result["confidence"] == 0.0
+    assert result["verified"] is False
+    assert result["unsupported_claims"] == []
+    assert result.get("error") == "verification_unavailable"
+
+
+def test_groundedness_fails_closed_when_llm_raises():
+    """A verifier that RAISES (not just empty) is also a failure → fail closed."""
+    def boom(prompt: str) -> str:
+        raise RuntimeError("model backend exploded")
+
+    source = _source_chunk("Some content.")
+    result = groundedness_check(
+        query="test", answer_draft="Some answer.", source_chunks=[source],
+        llm_fn=boom,
+    )
+    assert result["grounded"] is False
+    assert result["confidence"] == 0.0
+    assert result["verified"] is False
+
+
+def test_groundedness_not_configured_fails_closed():
+    """With no llm_fn at all, groundedness fails closed (dead HF default removed)."""
+    source = _source_chunk("Some content.")
+    result = groundedness_check(
+        query="test", answer_draft="Some answer.", source_chunks=[source],
+    )
+    assert result["grounded"] is False
+    assert result["confidence"] == 0.0
+    assert result["verified"] is False
+
+
+def test_groundedness_happy_path_sets_verified_true():
+    """The fix only changes the ERROR path: a successful verifier still returns its
+    normal result, now annotated verified=True."""
+    source = _source_chunk("The sky is blue.")
+
+    supported = groundedness_check(
+        query="q", answer_draft="The sky is blue.", source_chunks=[source],
+        llm_fn=lambda p: "none",
+    )
+    assert supported["grounded"] is True
+    assert supported["confidence"] == 1.0
+    assert supported["verified"] is True
+
+    unsupported = groundedness_check(
+        query="q", answer_draft="The sky is blue. Cats can fly.", source_chunks=[source],
+        llm_fn=lambda p: "- Cats can fly.",
+    )
+    assert unsupported["grounded"] is False
+    assert unsupported["verified"] is True
+    assert any("Cats" in c for c in unsupported["unsupported_claims"])
 
 
 def test_groundedness_confidence_decreases_with_more_unsupported_claims():
@@ -430,15 +484,17 @@ def test_semantic_search_never_invokes_llm():
     assert len(groundedness_called) == 0
     assert len(ranked) > 0
 
-    # Verify by patching the module-level LLM function and asserting it's clean
-    with patch("app.pipeline.retrieval._call_hf_api") as mock_hf:
+    # Verify by patching the generation functions and asserting retrieval never calls them.
+    with patch("app.pipeline.retrieval.generate_answer") as mock_gen, \
+         patch("app.pipeline.retrieval.groundedness_check") as mock_ground:
         _ = hybrid_search(
             query="Apple revenue", user_id="u1",
             chroma_client=mock_chroma, bm25_index=mock_bm25,
             embed_fn=embed_fn, top_n=10,
         )
         _ = rerank("Apple revenue", candidates, top_k=5, reranker=_MockCrossEncoder())
-        mock_hf.assert_not_called()
+        mock_gen.assert_not_called()
+        mock_ground.assert_not_called()
 
 
 # ── 5. /generate/answer returns grounded=False with fabricated claim ──────────
@@ -597,14 +653,19 @@ def endpoint_client():
     app.dependency_overrides[get_current_user] = lambda: _FakeUser()
     prev_bm25 = getattr(app.state, "bm25", None)
     prev_embed = getattr(app.state, "embed_fn", None)
+    prev_llm = getattr(app.state, "llm_fn", None)
     app.state.bm25 = BM25Index(persist_dir=tempfile.mkdtemp(prefix="bm25_ep_"))
     app.state.embed_fn = lambda text: [0.1] * 384
+    # Default: NO generation backend wired (Story 1 wires the real provider). Tests
+    # that exercise the generation happy path set app.state.llm_fn explicitly.
+    app.state.llm_fn = None
     try:
         yield TestClient(app)
     finally:
         app.dependency_overrides.pop(get_current_user, None)
         app.state.bm25 = prev_bm25
         app.state.embed_fn = prev_embed
+        app.state.llm_fn = prev_llm
 
 
 def test_semantic_search_endpoint_never_calls_llm(endpoint_client, monkeypatch):
@@ -613,8 +674,9 @@ def test_semantic_search_endpoint_never_calls_llm(endpoint_client, monkeypatch):
     cands = [_cand("c1", "Apple Inc. revenue was $394 billion.")]
     monkeypatch.setattr("app.routers.search.hybrid_search", lambda **kw: cands)
     monkeypatch.setattr("app.routers.search.rerank", lambda q, c, top_k: c[:top_k])
-    hf = MagicMock()
-    monkeypatch.setattr("app.pipeline.retrieval._call_hf_api", hf)
+    # Wire a generation backend so we can prove /search/semantic never touches it.
+    llm = MagicMock()
+    app.state.llm_fn = llm
 
     resp = endpoint_client.post("/search/semantic", json={"query": "Apple revenue", "top_k": 5})
     assert resp.status_code == 200, resp.text
@@ -622,7 +684,7 @@ def test_semantic_search_endpoint_never_calls_llm(endpoint_client, monkeypatch):
     assert body["total"] == 1
     assert body["results"][0]["chunk_id"] == "c1"
     assert body["results"][0]["reranker_score"] is not None
-    hf.assert_not_called()   # pure retrieval — no generation, no groundedness
+    llm.assert_not_called()   # pure retrieval — no generation, no groundedness
 
 
 def test_semantic_search_503_without_bm25(monkeypatch):
@@ -657,12 +719,97 @@ def test_generate_answer_endpoint_flags_hallucination(endpoint_client, monkeypat
             return "- They also acquired Netflix in 2023."
         return hallucinated
 
-    monkeypatch.setattr("app.pipeline.retrieval._call_hf_api", fake_llm)
+    # Story 1's provider seam wires app.state.llm_fn; here we inject a fake to exercise
+    # the generation happy path through the endpoint.
+    app.state.llm_fn = fake_llm
 
-    resp = endpoint_client.post("/generate/answer", json={"query": "What is Apple's revenue?"})
+    resp = endpoint_client.post("/generate/answer?stream=false", json={"query": "What is Apple's revenue?"})
     assert resp.status_code == 200, resp.text
     body = resp.json()
     assert body["answer"] == hallucinated
     assert body["grounded"] is False
+    assert body["verified"] is True
     assert any("Netflix" in c for c in body["unsupported_claims"])
     assert body["citations"] and body["citations"][0]["chunk_id"] == "c1"
+
+
+def test_generate_answer_endpoint_honest_error_when_generation_not_configured(endpoint_client, monkeypatch):
+    """Story 0 BUG 1: with no generation backend wired (app.state.llm_fn is None), the
+    endpoint returns an HONEST error — HTTP 200, answer=null, error=generation_not_configured
+    — with REAL citations from retrieval, instead of silently returning an empty answer."""
+    cands = [_cand("c1", "Apple Inc. reported annual revenue of $394 billion in fiscal 2023.")]
+    monkeypatch.setattr("app.routers.search.hybrid_search", lambda **kw: cands)
+    monkeypatch.setattr("app.routers.search.rerank", lambda q, c, top_k: c[:top_k])
+
+    # Prove no generation is attempted even if generate_answer were reachable.
+    gen_spy = MagicMock(side_effect=AssertionError("generate_answer must not be called"))
+    monkeypatch.setattr("app.routers.search.generate_answer", gen_spy)
+
+    # endpoint_client fixture already sets app.state.llm_fn = None
+    resp = endpoint_client.post("/generate/answer?stream=false", json={"query": "What is Apple's revenue?"})
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["answer"] is None
+    assert body["error"] == "generation_not_configured"
+    assert body["grounded"] is False
+    assert body["confidence"] == 0.0
+    assert body["verified"] is False
+    # Citations are real — retrieval succeeded.
+    assert body["citations"] and body["citations"][0]["chunk_id"] == "c1"
+    gen_spy.assert_not_called()
+
+
+def test_generate_answer_endpoint_with_stub_provider(endpoint_client, monkeypatch):
+    """Story 1: with the StubProvider wired onto app.state.llm_fn, /generate/answer
+    returns a real (non-empty) answer plus citations — the retrieval half runs normally
+    and generation uses the stub (no live API)."""
+    from app.generation.stub import StubProvider
+
+    cands = [_cand("c1", "Apple Inc. reported annual revenue of $394 billion in fiscal 2023.")]
+    monkeypatch.setattr("app.routers.search.hybrid_search", lambda **kw: cands)
+    monkeypatch.setattr("app.routers.search.rerank", lambda q, c, top_k: c[:top_k])
+
+    stub = StubProvider()
+    stub.set_response("Apple Inc.'s revenue was $394 billion in fiscal 2023.")
+    app.state.llm_fn = lambda prompt: stub.generate(prompt)
+
+    resp = endpoint_client.post("/generate/answer?stream=false", json={"query": "What is Apple's revenue?"})
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["answer"] == "Apple Inc.'s revenue was $394 billion in fiscal 2023."
+    assert body["answer"]  # non-empty
+    assert body["error"] is None
+    assert body["verified"] is True  # groundedness actually ran (stub, not fail-closed)
+    assert body["citations"] and body["citations"][0]["chunk_id"] == "c1"
+    # the stub was invoked for BOTH generation and groundedness verification
+    assert len(stub.calls) == 2
+
+
+def test_generate_answer_endpoint_passes_llm_fn_through_to_both(endpoint_client, monkeypatch):
+    """The endpoint must pass app.state.llm_fn INTO generate_answer AND
+    groundedness_check — there is no hardcoded internal fallback."""
+    cands = [_cand("c1", "Apple Inc. revenue was $394 billion.")]
+    monkeypatch.setattr("app.routers.search.hybrid_search", lambda **kw: cands)
+    monkeypatch.setattr("app.routers.search.rerank", lambda q, c, top_k: c[:top_k])
+
+    sentinel = lambda prompt: "stub answer"  # noqa: E731 — identity is what we assert
+    app.state.llm_fn = sentinel
+
+    seen = {}
+
+    def gen_spy(query, chunks, llm_fn=None, doc_chunks_fetcher=None, **kwargs):
+        seen["generate"] = llm_fn
+        return "stub answer"
+
+    def ground_spy(query, draft, chunks, llm_fn=None, answer_task=None):
+        seen["groundedness"] = llm_fn
+        return {"grounded": True, "confidence": 1.0, "unsupported_claims": [], "verified": True}
+
+    monkeypatch.setattr("app.routers.search.generate_answer", gen_spy)
+    monkeypatch.setattr("app.routers.search.groundedness_check", ground_spy)
+
+    resp = endpoint_client.post("/generate/answer?stream=false", json={"query": "What is Apple's revenue?"})
+    assert resp.status_code == 200, resp.text
+    # exact object identity: the endpoint forwarded app.state.llm_fn to both, not a fallback
+    assert seen["generate"] is sentinel
+    assert seen["groundedness"] is sentinel

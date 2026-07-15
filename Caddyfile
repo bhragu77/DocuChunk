@@ -1,0 +1,13 @@
+# Caddy reverse proxy — automatic HTTPS (Let's Encrypt) for the FastAPI backend.
+#
+# Replace the hostname below with YOUR domain (e.g. the free DuckDNS one you set
+# up in the deploy guide: docuchunk.duckdns.org). Caddy provisions and renews a
+# TLS certificate for it automatically — no manual certbot, no cron.
+#
+# `app` resolves over the Docker Compose network to the FastAPI container, which
+# listens on port 8000 (see Dockerfile CMD). Nothing else needs to be exposed.
+
+REPLACE_WITH_YOUR_DOMAIN {
+    encode gzip
+    reverse_proxy app:8000
+}

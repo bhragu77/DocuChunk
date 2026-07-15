@@ -1,0 +1,40 @@
+# Dev override: run the LATEST host source inside the existing images without a
+# full rebuild. The base images already have all pip deps installed; we just mount
+# the current code over /app/app (+ static) so `docker compose up -d` recreates the
+# app/worker containers running the newest routers, models and templates.
+#
+# It also mounts the host's already-downloaded embedding model (all-MiniLM-L6-v2)
+# into the containers read-only, with HF offline mode, so ingestion + query
+# embedding load instantly from cache — no in-container download.
+#
+# Data (Chroma, SQLite, uploads, Redis) lives in named volumes and is untouched.
+# To go back to the baked-in image, delete this file and rebuild with
+# `docker compose build`.
+services:
+  app:
+    # The 6-day base image predates google-genai in requirements.txt, and a
+    # container recreate wipes any manual `pip install`. Install it on startup so
+    # the Gemini provider is wired every time. (A `docker compose build` would bake
+    # it in and let you drop this line.)
+    command: >
+      sh -c "pip install --no-cache-dir 'google-genai>=0.3.0' >/tmp/genai-install.log 2>&1 || true;
+      exec uvicorn app.main:app --host 0.0.0.0 --port 8000"
+    volumes:
+      - ./app:/app/app
+      - ./static:/app/static
+      - ./scripts:/app/scripts
+      - ${HOME}/.cache/huggingface:/root/.cache/huggingface:ro
+      - ${HOME}/nltk_data:/root/nltk_data:ro
+    environment:
+      - HF_HUB_OFFLINE=1
+      - TRANSFORMERS_OFFLINE=1
+
+  worker:
+    volumes:
+      - ./app:/app/app
+      - ./static:/app/static
+      - ${HOME}/.cache/huggingface:/root/.cache/huggingface:ro
+      - ${HOME}/nltk_data:/root/nltk_data:ro
+    environment:
+      - HF_HUB_OFFLINE=1
+      - TRANSFORMERS_OFFLINE=1
