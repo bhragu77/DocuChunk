@@ -43,6 +43,10 @@ chromadb>=0.5.0
 # Embeddings / generation (HuggingFace free)
 numpy>=1.26.0
 
+# LLM generation (Story 1 — GenerationProvider seam). google-genai powers
+# GEN_PROVIDER=gemini; the import is guarded so stub/openai_compat work without it.
+google-genai>=0.3.0
+
 # Reranking (Phase 8 — cross-encoder for hybrid search)
 sentence-transformers>=2.7.0
 
