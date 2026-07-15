@@ -15,6 +15,7 @@ from app.routers.auth import router as auth_router
 from app.routers.documents import router as docs_router
 from app.routers.pages import router as pages_router
 from app.routers.search import search_router, generate_router
+from app.routers.chat import router as chat_router
 from app.routers.eval import router as eval_router
 from app.routers.analysis import router as analysis_router
 
@@ -62,6 +63,58 @@ async def lifespan(app: FastAPI):
     app.state.bm25 = BM25Index(persist_dir=settings.chroma_persist_dir)
     app.state.embed_fn = embed_single
     logger.info("Phase 8 retrieval wired [bm25 + query embedder]")
+
+    # Story 1 — generation provider. Built from GEN_PROVIDER and exposed as
+    # app.state.llm_fn (Callable[[str], str]), the seam /generate/answer reads. Bound
+    # to the configured max_tokens/temperature so callers just pass a prompt. If the
+    # provider can't be built (e.g. GEN_PROVIDER=gemini with no key), we leave llm_fn
+    # None so the endpoint returns Story 0's honest "generation_not_configured" shape
+    # rather than crashing startup. Generation lives in the WEB process only (see
+    # worker.py for why); the worker never builds one.
+    from app.generation.factory import (
+        build_gen_provider,
+        build_verify_provider,
+        make_llm_fn,
+        make_llm_stream_fn,
+        make_verify_fn,
+    )
+    app.state.llm_fn = None
+    # Story 6 — the STREAMING seam. Parallel to llm_fn but returns an Iterator[str]
+    # of text chunks. /generate/answer uses it for Phase 1 (token streaming) and
+    # falls back to llm_fn if it's absent or fails on the first chunk. None when no
+    # provider is configured (same guard as llm_fn).
+    app.state.llm_stream_fn = None
+    # Story 7 — the VERIFICATION seam (model tiering). validate_citations Tier-2 +
+    # groundedness_check run through verify_fn, which may be a cheaper/lower-temp
+    # model than the generator. When VERIFY_PROVIDER is unset, it reuses the
+    # generation provider (backward compatible). None when generation is unconfigured.
+    app.state.verify_fn = None
+    try:
+        _gen_provider = build_gen_provider(settings)
+        app.state.llm_fn = make_llm_fn(_gen_provider, settings)
+        app.state.llm_stream_fn = make_llm_stream_fn(_gen_provider, settings)
+        _verify_provider = build_verify_provider(settings, gen_provider=_gen_provider)
+        app.state.verify_fn = make_verify_fn(_verify_provider, settings)
+        logger.info(
+            "Generation wired [gen=%s/%s verify=%s/%s stream=%s]",
+            _gen_provider.provider_name, _gen_provider.model_name,
+            _verify_provider.provider_name, _verify_provider.model_name,
+            settings.stream_enabled,
+        )
+    except Exception as exc:
+        logger.warning(
+            "Generation provider unavailable (%s) — /generate/answer will return "
+            "generation_not_configured until GEN_PROVIDER is set with a valid key.", exc,
+        )
+
+    # Story 7 — the ANSWER CACHE. Skips the whole chain for a repeated
+    # (user, doc, doc_version, query). None when CACHE_BACKEND=none (the default).
+    from app.generation.cache import build_cache
+    app.state.answer_cache = None
+    try:
+        app.state.answer_cache = build_cache(settings)
+    except Exception as exc:
+        logger.warning("Answer cache unavailable (%s) — caching disabled", exc)
 
     # arq Redis pool — used to ENQUEUE pipeline jobs onto the worker. The worker
     # itself is a separate process (arq app.worker.WorkerSettings). If Redis is
@@ -116,6 +169,7 @@ def create_app() -> FastAPI:
     app.include_router(docs_router)
     app.include_router(search_router)    # Phase 8: POST /search/semantic
     app.include_router(generate_router)  # Phase 8: POST /generate/answer
+    app.include_router(chat_router)      # Chat sessions: /chat/sessions (per-user history + lock)
     app.include_router(eval_router)      # Admin-gated: GET /eval/run (dense-only baseline)
     app.include_router(analysis_router)  # Chunk analyser, embedding inspection, UMAP viz
     # Remaining routers wired in as phases complete:

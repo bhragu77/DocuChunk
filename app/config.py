@@ -52,6 +52,109 @@ class Settings(BaseSettings):
     hf_embed_model: str = "sentence-transformers/all-MiniLM-L6-v2"
     hf_gen_model: str = "google/flan-t5-base"
 
+    # Generation (Story 1) — the LLM layer on top of retrieval. GEN_PROVIDER selects
+    # the backend; app/generation/factory.build_gen_provider is the one construction
+    # site. Default "stub" keeps generation OFFLINE/safe until a real key is configured.
+    #   stub          → deterministic offline provider (tests + default)
+    #   gemini        → google-genai SDK (needs GEMINI_API_KEY)
+    #   openai_compat → any OpenAI-compatible /chat/completions (DeepSeek/Groq/Ollama)
+    gen_provider: str = "stub"          # "stub" | "gemini" | "openai_compat"
+    gemini_api_key: str = ""            # env-only — NEVER commit a real key
+    gen_model: str = "gemini-3.1-flash-lite"
+    gen_temperature: float = 0.3        # low for grounded QA
+    gen_max_tokens: int = 1024
+    gen_timeout_s: float = 30.0
+    # OpenAI-compatible fallback provider target (only used when gen_provider == "openai_compat")
+    openai_compat_base_url: str = ""    # e.g. https://api.deepseek.com/v1 or http://localhost:11434/v1
+    openai_compat_api_key: str = ""
+    openai_compat_model: str = ""
+
+    # Model tiering (Story 7) — the VERIFY_* tier. Generation (the creative call)
+    # uses GEN_*; verification (citation Tier-2 judge + groundedness — mechanical
+    # yes/no work) uses a CHEAPER, lower-temperature, hard-capped model. The seam
+    # from Story 1 makes this free: build_verify_provider reads these and the
+    # endpoint routes generate→llm_fn, validate+groundedness→verify_fn.
+    #   VERIFY_PROVIDER unset ("") → reuse the generation provider (backward
+    #   compatible: a single model still generates AND verifies, exactly as before).
+    verify_provider: str = ""            # "" (reuse gen) | "stub" | "gemini" | "openai_compat"
+    verify_model: str = ""               # e.g. a cheaper gemini-2.0-flash-lite
+    verify_api_key: str = ""             # may share GEMINI_API_KEY or be separate
+    verify_temperature: float = 0.1      # lower than gen — verification is mechanical
+    verify_max_tokens: int = 64          # verification replies are short ("0.85"/"supported")
+
+    # Answer cache (Story 7) — skip the ENTIRE chain (retrieval + generation +
+    # validation + groundedness) for a repeated (user, doc, doc_version, query).
+    #   CACHE_BACKEND: "none" (default — pre-Story-7 behavior, no caching) |
+    #                  "memory" (in-process LRU, dev/tests) | "redis" (shared).
+    #   Key is version-aware, so a re-upload (doc.version += 1) busts it
+    #   automatically; TTL is only the safety net for edge cases.
+    cache_backend: str = "none"          # "none" | "memory" | "redis"
+    cache_ttl: int = 3600                # seconds a cached answer stays valid
+    cache_max_memory_entries: int = 1000  # InMemoryAnswerCache LRU capacity
+
+    # Token budgeting (Story 7) — cap the prompt SIZE. Over-budget prompts trim the
+    # lowest-ranked expanded chunks first (Story 5's middle-truncation), applied to
+    # the WHOLE prompt (system + labels + question), not just the context block.
+    # Output caps are GEN_MAX_TOKENS (generation) and VERIFY_MAX_TOKENS (verify).
+    gen_max_input_tokens: int = 4000
+
+    # Generation-quality fix — thin-result retry (Part 4). When rerank returns fewer
+    # than THIN_RESULT_THRESHOLD chunks for a DEFINITIONAL/INFORMATIONAL query, the
+    # endpoint re-runs retrieval ONCE with a broadened query and appends the deduped
+    # hits, so the model has enough material to synthesize instead of parroting or
+    # abstaining. THIN_RESULT_RETRY=false disables the fallback entirely.
+    thin_result_threshold: int = 3
+    thin_result_retry: bool = True
+
+    # Scope-Aware Retrieval Routing (Keebler reasoning fix). A GLOBAL query
+    # (enumerate / table / classify / summarize / critique / infer) needs the WHOLE
+    # document, not the top-k slice — top-k drops the chunks a complete answer
+    # requires. When enabled and a single doc_id is in scope, such queries bypass
+    # hybrid_search/rerank and feed the full document (retrieval.fetch_whole_document).
+    # SCOPE_ROUTING_ENABLED=false restores pure top-k for every query.
+    scope_routing_enabled: bool = True
+    # Hard cap on how many chunks a whole-document GLOBAL fetch will feed the prompt.
+    # A safety rail for very large docs (the prompt builder's GEN_MAX_INPUT_TOKENS
+    # budget still trims text); 0 = no cap. Map-reduce for huge docs is a later phase.
+    scope_whole_doc_max_chunks: int = 400
+
+    # Generation-quality fix — anti-verbatim guard (Part 5). A post-generation string
+    # check (no LLM). A sentence whose longest contiguous token run against any source
+    # chunk exceeds VERBATIM_THRESHOLD of its length is flagged VERBATIM. When the
+    # fraction of flagged sentences exceeds VERBATIM_WARNING_RATIO, the response carries
+    # quality_warning="high_verbatim". Monitoring only — the answer is never modified.
+    verbatim_threshold: float = 0.8
+    verbatim_warning_ratio: float = 0.5
+
+    # Streaming (Story 6) — GLOBAL kill switch for SSE token streaming on
+    # POST /generate/answer. When true (default), a request may stream (tokens as
+    # they generate, then a verification patch) unless it opts out with ?stream=false.
+    # When FALSE, every request is served the synchronous JSON response regardless
+    # of ?stream — the emergency lever to disable streaming platform-wide without a
+    # client change. (Retrieval and verification logic are identical either way.)
+    stream_enabled: bool = True
+
+    # Citation validation (Story 3) — Tier 2 (LLM judge) toggle. Tier 1 (lexical)
+    # always runs and is free. VALIDATE_USE_LLM=true lets the judge adjudicate the
+    # SUSPECT citations Tier 1 flags; false makes those citations "unverified"
+    # (fail-open, flagged) instead of judged. Default true (prod); set false in
+    # fast/offline test runs to keep them hermetic and LLM-free.
+    validate_use_llm: bool = True
+
+    # Context expansion (Story 5) — widen each retrieved chunk to its neighbors so
+    # answers that span a chunk boundary have the full passage to work from.
+    #   window   → neighbors per side (±N by chunk_index within the same doc).
+    #   max_tokens → total budget across all expanded chunks; over-budget context
+    #                is middle-truncated from the lowest-ranked chunks first (the
+    #                "lost in the middle" guard). Rough len//4 token estimate.
+    #   enabled  → kill switch / A-B lever. False = pre-Story-5 behavior (raw
+    #              chunk text, no neighbor merge, no Chroma doc-chunk fetch).
+    # NOTE: expansion needs char_start/char_end in Chroma metadata (Story 5 fix in
+    # vector_store._metadata_for) — documents ingested earlier must be re-uploaded.
+    context_expansion_window: int = 1
+    context_max_tokens: int = 3000
+    context_expansion_enabled: bool = True
+
     # Embedding (Phase 6 / Part 1)
     #   local  → sentence-transformers in-process (model loaded once in worker on_startup)
     #   hf_api → huggingface_hub InferenceClient (no local model)

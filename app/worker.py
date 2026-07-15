@@ -49,6 +49,14 @@ async def on_startup(ctx: dict) -> None:
     else:
         logger.info("EMBED_PROVIDER=%s — no local ST model loaded", settings.embed_provider)
 
+    # NOTE (Story 1): the worker deliberately does NOT build a generation provider.
+    # Generation is interactive, latency-bound work that belongs in the REQUEST PATH
+    # (the web process wires it onto app.state.llm_fn) so a user gets tokens back on
+    # the same connection — and, next, so answers can STREAM. The worker exists for
+    # batch, crash-resumable work (parse→chunk→embed, later map-reduce summarization);
+    # putting synchronous LLM calls here would block the pipeline queue for no benefit.
+    # So ctx has no "llm_fn" key by design — asserted in the tests.
+
     logger.info("arq worker startup complete [chroma_mode=%s]", settings.chroma_mode)
 
 

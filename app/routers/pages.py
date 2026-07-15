@@ -26,6 +26,22 @@ async def dashboard(request: Request):
     return templates.TemplateResponse(request, "dashboard.html")
 
 
+@router.get("/chat", response_class=HTMLResponse)
+async def chat(request: Request):
+    return templates.TemplateResponse(request, "chat.html")
+
+
+@router.get("/chat/{doc_id}", response_class=HTMLResponse)
+async def chat_doc(request: Request, doc_id: str):
+    # Phase 1: doc_id is read client-side from the URL; no server data yet.
+    return templates.TemplateResponse(request, "chat.html")
+
+
+@router.get("/profile", response_class=HTMLResponse)
+async def profile(request: Request):
+    return templates.TemplateResponse(request, "profile.html")
+
+
 @router.get("/welcome", response_class=HTMLResponse)
 async def welcome(request: Request):
     return templates.TemplateResponse(request, "welcome.html")

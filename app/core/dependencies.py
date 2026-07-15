@@ -31,6 +31,24 @@ def get_current_user(
     return user
 
 
+def get_current_user_optional(
+    credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
+    db: Session = Depends(get_db),
+) -> User | None:
+    """Like get_current_user but returns None instead of 401 when the
+    Authorization header is missing/invalid. Used by endpoints that also accept a
+    `?token=` query param (e.g. iframe-loaded file previews)."""
+    if credentials is None:
+        return None
+    payload = verify_access_token(credentials.credentials)
+    if payload is None:
+        return None
+    user = db.query(User).filter(User.id == payload.get("sub")).first()
+    if user is None or not user.is_active:
+        return None
+    return user
+
+
 def get_chroma(request: Request) -> chromadb.ClientAPI:
     """
     FastAPI dependency — returns the shared ChromaDB client.
