@@ -1,5 +1,5 @@
 {
-  "description": "Hardened retrieval eval set for Phase 8. Built to DISCRIMINATE, not to score high. Contains deliberate near-miss distractors: two tech companies with similar financials (Apple Inc. vs Pear Computing Inc.), two fruit-growing guides with per-acre economics (apple orchard vs citrus grove), and three device manuals whose identifiers are transposed decoys of one another (part 88-AZ-0097 vs 88-AZ-0079, error E-4521 vs E-4251, firmware 4.0.2 vs 4.2.0). Queries are user-style paraphrases that avoid mirroring the answer chunk's distinctive tokens, plus bare exact-code queries where a dense embedding blurs similar identifiers but BM25 nails the exact one. The goal is a visible spread across dense-only / hybrid / hybrid+rerank.",
+  "description": "Hardened retrieval eval set for Phase 8. Built to DISCRIMINATE, not to score high. Contains deliberate near-miss distractors: two tech companies with similar financials (Apple Inc. vs Pear Computing Inc.), two fruit-growing guides with per-acre economics (apple orchard vs citrus grove), and three device manuals whose identifiers are transposed decoys of one another (part 88-AZ-0097 vs 88-AZ-0079, error E-4521 vs E-4251, firmware 4.0.2 vs 4.2.0). Queries are user-style paraphrases that avoid mirroring the answer chunk's distinctive tokens, plus bare exact-code queries where a dense embedding blurs similar identifiers but BM25 nails the exact one. The goal is a visible spread across dense-only / hybrid / hybrid+rerank.\n\nMULTI-HOP SET (category `multi_hop`): compound questions whose answer spans 2-3 DIFFERENT documents, declared via `expected_doc_ids`. They exist to make the agent-vs-RAG comparison decidable: a single top-k pass cannot cover every required document, so context-recall separates planned multi-hop retrieval from single-shot.",
   "chunk_strategy": "sentence",
   "documents": [
     {
@@ -88,6 +88,288 @@
         "The SolarMax 5000 is the premium residential solar inverter from Helios Power. The SolarMax 5000 provides a continuous output of 5 kilowatts and is intended for large households with high energy demand.",
         "The SolarMax 5000 ships with an extended ten year warranty. Installation is wall mounted and usually requires a certified electrician for a full working day."
       ]
+    },
+    {
+      "doc_id": "doc_gadget_kx1100",
+      "source": "gadgetcorp_kx1100_manual.docx",
+      "paragraphs": [
+        "The GadgetCorp KX-1100 is a indoor air quality monitor built for professional installation. The KX-1100 carries an ingress protection rating of IP41 and works across a temperature range of 5 to 40 degrees Celsius.",
+        "For service on the KX-1100, the replacement module is supplied under part number 77-CD-3310 and must be ordered from an authorized dealer. If the KX-1100 shows error code E-5140, the particulate sensor is saturated and requires cleaning and the unit should be serviced.",
+        "The recommended firmware for the KX-1100 is version 2.1.4. The default administrator password is kx1100admin, and KX-1100 technical support can be reached at 1-800-555-0211."
+      ]
+    },
+    {
+      "doc_id": "doc_gadget_qt7700",
+      "source": "gadgetcorp_qt7700_manual.docx",
+      "paragraphs": [
+        "The GadgetCorp QT-7700 is a outdoor camera bridge built for professional installation. The QT-7700 carries an ingress protection rating of IP66 and works across a temperature range of minus 10 to 55 degrees Celsius.",
+        "For service on the QT-7700, the replacement module is supplied under part number 31-QT-8820 and must be ordered from an authorized dealer. If the QT-7700 shows error code E-6302, the lens heater circuit has failed and the unit should be serviced.",
+        "The recommended firmware for the QT-7700 is version 5.3.1. The default administrator password is qt7700admin, and QT-7700 technical support can be reached at 1-800-555-0224."
+      ]
+    },
+    {
+      "doc_id": "doc_gadget_mr2400",
+      "source": "gadgetcorp_mr2400_manual.docx",
+      "paragraphs": [
+        "The GadgetCorp MR-2400 is a industrial vibration probe built for professional installation. The MR-2400 carries an ingress protection rating of IP68 and works across a temperature range of minus 40 to 85 degrees Celsius.",
+        "For service on the MR-2400, the replacement module is supplied under part number 12-MR-4405 and must be ordered from an authorized dealer. If the MR-2400 shows error code E-8815, the accelerometer calibration has drifted out of tolerance and the unit should be serviced.",
+        "The recommended firmware for the MR-2400 is version 3.7.0. The default administrator password is mr2400admin, and MR-2400 technical support can be reached at 1-800-555-0237."
+      ]
+    },
+    {
+      "doc_id": "doc_gadget_lp9100",
+      "source": "gadgetcorp_lp9100_manual.docx",
+      "paragraphs": [
+        "The GadgetCorp LP-9100 is a warehouse asset tag reader built for professional installation. The LP-9100 carries an ingress protection rating of IP52 and works across a temperature range of 0 to 50 degrees Celsius.",
+        "For service on the LP-9100, the replacement module is supplied under part number 64-LP-1190 and must be ordered from an authorized dealer. If the LP-9100 shows error code E-2093, the antenna tuning has failed and the reader must be re-seated and the unit should be serviced.",
+        "The recommended firmware for the LP-9100 is version 1.9.6. The default administrator password is lp9100admin, and LP-9100 technical support can be reached at 1-800-555-0248."
+      ]
+    },
+    {
+      "doc_id": "doc_gadget_vn3300",
+      "source": "gadgetcorp_vn3300_manual.docx",
+      "paragraphs": [
+        "The GadgetCorp VN-3300 is a cold chain temperature logger built for professional installation. The VN-3300 carries an ingress protection rating of IP65 and works across a temperature range of minus 30 to 30 degrees Celsius.",
+        "For service on the VN-3300, the replacement module is supplied under part number 58-VN-7712 and must be ordered from an authorized dealer. If the VN-3300 shows error code E-3471, the probe cable is open circuit and the unit should be serviced.",
+        "The recommended firmware for the VN-3300 is version 7.0.5. The default administrator password is vn3300admin, and VN-3300 technical support can be reached at 1-800-555-0259."
+      ]
+    },
+    {
+      "doc_id": "doc_gadget_df6600",
+      "source": "gadgetcorp_df6600_manual.docx",
+      "paragraphs": [
+        "The GadgetCorp DF-6600 is a building access controller built for professional installation. The DF-6600 carries an ingress protection rating of IP20 and works across a temperature range of 10 to 35 degrees Celsius.",
+        "For service on the DF-6600, the replacement module is supplied under part number 90-DF-2205 and must be ordered from an authorized dealer. If the DF-6600 shows error code E-9926, the credential database is corrupt and must be re-synced and the unit should be serviced.",
+        "The recommended firmware for the DF-6600 is version 8.4.2. The default administrator password is df6600admin, and DF-6600 technical support can be reached at 1-800-555-0262."
+      ]
+    },
+    {
+      "doc_id": "doc_gadget_sg8800",
+      "source": "gadgetcorp_sg8800_manual.docx",
+      "paragraphs": [
+        "The GadgetCorp SG-8800 is a solar array string monitor built for professional installation. The SG-8800 carries an ingress protection rating of IP65 and works across a temperature range of minus 25 to 70 degrees Celsius.",
+        "For service on the SG-8800, the replacement module is supplied under part number 45-SG-6640 and must be ordered from an authorized dealer. If the SG-8800 shows error code E-1188, a string current imbalance has been detected and the unit should be serviced.",
+        "The recommended firmware for the SG-8800 is version 2.6.3. The default administrator password is sg8800admin, and SG-8800 technical support can be reached at 1-800-555-0275."
+      ]
+    },
+    {
+      "doc_id": "doc_gadget_tb4500",
+      "source": "gadgetcorp_tb4500_manual.docx",
+      "paragraphs": [
+        "The GadgetCorp TB-4500 is a tank level transmitter built for professional installation. The TB-4500 carries an ingress protection rating of IP63 and works across a temperature range of minus 15 to 65 degrees Celsius.",
+        "For service on the TB-4500, the replacement module is supplied under part number 23-TB-9950 and must be ordered from an authorized dealer. If the TB-4500 shows error code E-7014, the ultrasonic transducer is obstructed and the unit should be serviced.",
+        "The recommended firmware for the TB-4500 is version 4.8.1. The default administrator password is tb4500admin, and TB-4500 technical support can be reached at 1-800-555-0286."
+      ]
+    },
+    {
+      "doc_id": "doc_gadget_wc1200",
+      "source": "gadgetcorp_wc1200_manual.docx",
+      "paragraphs": [
+        "The GadgetCorp WC-1200 is a wireless conference bridge built for professional installation. The WC-1200 carries an ingress protection rating of IP30 and works across a temperature range of 15 to 35 degrees Celsius.",
+        "For service on the WC-1200, the replacement module is supplied under part number 81-WC-3375 and must be ordered from an authorized dealer. If the WC-1200 shows error code E-4409, the echo cancellation module failed to initialise and the unit should be serviced.",
+        "The recommended firmware for the WC-1200 is version 6.5.7. The default administrator password is wc1200admin, and WC-1200 technical support can be reached at 1-800-555-0293."
+      ]
+    },
+    {
+      "doc_id": "doc_gadget_pn7300",
+      "source": "gadgetcorp_pn7300_manual.docx",
+      "paragraphs": [
+        "The GadgetCorp PN-7300 is a pipeline pressure node built for professional installation. The PN-7300 carries an ingress protection rating of IP69 and works across a temperature range of minus 20 to 90 degrees Celsius.",
+        "For service on the PN-7300, the replacement module is supplied under part number 37-PN-8140 and must be ordered from an authorized dealer. If the PN-7300 shows error code E-5567, the pressure diaphragm has exceeded its rated cycle count and the unit should be serviced.",
+        "The recommended firmware for the PN-7300 is version 9.1.0. The default administrator password is pn7300admin, and PN-7300 technical support can be reached at 1-800-555-0304."
+      ]
+    },
+    {
+      "doc_id": "doc_gadget_rx5900",
+      "source": "gadgetcorp_rx5900_manual.docx",
+      "paragraphs": [
+        "The GadgetCorp RX-5900 is a retail shelf beacon built for professional installation. The RX-5900 carries an ingress protection rating of IP44 and works across a temperature range of 5 to 45 degrees Celsius.",
+        "For service on the RX-5900, the replacement module is supplied under part number 19-RX-2260 and must be ordered from an authorized dealer. If the RX-5900 shows error code E-6748, the beacon has lost time synchronisation with the gateway and the unit should be serviced.",
+        "The recommended firmware for the RX-5900 is version 3.3.8. The default administrator password is rx5900admin, and RX-5900 technical support can be reached at 1-800-555-0317."
+      ]
+    },
+    {
+      "doc_id": "doc_gadget_hd2200",
+      "source": "gadgetcorp_hd2200_manual.docx",
+      "paragraphs": [
+        "The GadgetCorp HD-2200 is a hospital bed telemetry unit built for professional installation. The HD-2200 carries an ingress protection rating of IP34 and works across a temperature range of 10 to 40 degrees Celsius.",
+        "For service on the HD-2200, the replacement module is supplied under part number 72-HD-5580 and must be ordered from an authorized dealer. If the HD-2200 shows error code E-8231, the patient lead impedance is out of range and the unit should be serviced.",
+        "The recommended firmware for the HD-2200 is version 5.9.4. The default administrator password is hd2200admin, and HD-2200 technical support can be reached at 1-800-555-0328."
+      ]
+    },
+    {
+      "doc_id": "doc_company_quince",
+      "source": "quince_annual_report.docx",
+      "paragraphs": [
+        "Quince Digital Inc. is a technology company headquartered in Seattle, Washington. Quince Digital Inc. was founded in 2004 by Helena Ruiz and Tobias Lang, and its current chief executive is Marcus Oyelaran.",
+        "For the latest fiscal year Quince Digital Inc. reported annual revenue of 148 billion dollars. The board approved 31 cents per share. The company employs roughly 74,000 people.",
+        "Much of the growth at Quince Digital Inc. came from its advertising technology division, which management has named a strategic priority for the coming year."
+      ]
+    },
+    {
+      "doc_id": "doc_company_medlar",
+      "source": "medlar_annual_report.docx",
+      "paragraphs": [
+        "Medlar Semiconductor Corp. is a technology company headquartered in Phoenix, Arizona. Medlar Semiconductor Corp. was founded in 1989 by Ingrid Sollen, and its current chief executive is Rafael Duarte.",
+        "For the latest fiscal year Medlar Semiconductor Corp. reported annual revenue of 87 billion dollars. The board approved 12 cents per share. The company employs roughly 41,000 people.",
+        "Much of the growth at Medlar Semiconductor Corp. came from its chip fabrication division, which management has named a strategic priority for the coming year."
+      ]
+    },
+    {
+      "doc_id": "doc_company_sorbus",
+      "source": "sorbus_annual_report.docx",
+      "paragraphs": [
+        "Sorbus Networks Ltd. is a technology company headquartered in Dublin, Ireland. Sorbus Networks Ltd. was founded in 2011 by Cormac Nally and Aisling Byrne, and its current chief executive is Priyanka Raghavan.",
+        "For the latest fiscal year Sorbus Networks Ltd. reported annual revenue of 26 billion dollars. The board approved no dividend. The company employs roughly 18,500 people.",
+        "Much of the growth at Sorbus Networks Ltd. came from its network security division, which management has named a strategic priority for the coming year."
+      ]
+    },
+    {
+      "doc_id": "doc_company_rowan",
+      "source": "rowan_annual_report.docx",
+      "paragraphs": [
+        "Rowan Analytics Inc. is a technology company headquartered in Toronto, Ontario. Rowan Analytics Inc. was founded in 1997 by Devon Marchetti, and its current chief executive is Sara Lindqvist.",
+        "For the latest fiscal year Rowan Analytics Inc. reported annual revenue of 54 billion dollars. The board approved 9 cents per share. The company employs roughly 29,000 people.",
+        "Much of the growth at Rowan Analytics Inc. came from its business intelligence division, which management has named a strategic priority for the coming year."
+      ]
+    },
+    {
+      "doc_id": "doc_company_bramley",
+      "source": "bramley_annual_report.docx",
+      "paragraphs": [
+        "Bramley Robotics AG is a technology company headquartered in Zurich, Switzerland. Bramley Robotics AG was founded in 2008 by Anneke Vogel and Stefan Brandt, and its current chief executive is Yuki Tanabe.",
+        "For the latest fiscal year Bramley Robotics AG reported annual revenue of 12 billion dollars. The board approved no dividend. The company employs roughly 6,700 people.",
+        "Much of the growth at Bramley Robotics AG came from its warehouse automation division, which management has named a strategic priority for the coming year."
+      ]
+    },
+    {
+      "doc_id": "doc_company_loquat",
+      "source": "loquat_annual_report.docx",
+      "paragraphs": [
+        "Loquat Health Systems is a technology company headquartered in Boston, Massachusetts. Loquat Health Systems was founded in 1993 by Gerald Whitmore, and its current chief executive is Amara Nwosu.",
+        "For the latest fiscal year Loquat Health Systems reported annual revenue of 63 billion dollars. The board approved 17 cents per share. The company employs roughly 38,000 people.",
+        "Much of the growth at Loquat Health Systems came from its clinical software division, which management has named a strategic priority for the coming year."
+      ]
+    },
+    {
+      "doc_id": "doc_company_damson",
+      "source": "damson_annual_report.docx",
+      "paragraphs": [
+        "Damson Freight Group is a technology company headquartered in Rotterdam, Netherlands. Damson Freight Group was founded in 1976 by Pieter de Waal and Maud Elzinga, and its current chief executive is Olivier Fontaine.",
+        "For the latest fiscal year Damson Freight Group reported annual revenue of 41 billion dollars. The board approved 22 cents per share. The company employs roughly 56,000 people.",
+        "Much of the growth at Damson Freight Group came from its container logistics division, which management has named a strategic priority for the coming year."
+      ]
+    },
+    {
+      "doc_id": "doc_company_mulberry",
+      "source": "mulberry_annual_report.docx",
+      "paragraphs": [
+        "Mulberry Energy Partners is a technology company headquartered in Calgary, Alberta. Mulberry Energy Partners was founded in 2001 by Nathan Cormier, and its current chief executive is Beatrice Adeyemi.",
+        "For the latest fiscal year Mulberry Energy Partners reported annual revenue of 78 billion dollars. The board approved 35 cents per share. The company employs roughly 22,400 people.",
+        "Much of the growth at Mulberry Energy Partners came from its renewable generation division, which management has named a strategic priority for the coming year."
+      ]
+    },
+    {
+      "doc_id": "doc_cherry_grove",
+      "source": "cherry_growing_guide.docx",
+      "paragraphs": [
+        "Cherry orchards demand careful attention to rootstock and spacing. A commercial cherry planting typically places 220 to 300 trees per acre, and growers plan irrigation around that density.",
+        "Returns vary by variety and region. A well managed cherry block can bring a grower nineteen thousand to twenty four thousand dollars per acre in a strong season. Bing and Rainier are the varieties that fetch the strongest prices at market.",
+        "The cherry harvest usually runs from June and early July. The major operating risk for a cherry grower is rain induced fruit cracking."
+      ]
+    },
+    {
+      "doc_id": "doc_peach_grove",
+      "source": "peach_growing_guide.docx",
+      "paragraphs": [
+        "Peach orchards demand careful attention to rootstock and spacing. A commercial peach planting typically places 150 to 190 trees per acre, and growers plan irrigation around that density.",
+        "Returns vary by variety and region. A well managed peach block can bring a grower six thousand to nine thousand dollars per acre in a strong season. Redhaven and Elberta are the varieties that fetch the strongest prices at market.",
+        "The peach harvest usually runs from July through August. The major operating risk for a peach grower is spring frost during bloom."
+      ]
+    },
+    {
+      "doc_id": "doc_almond_grove",
+      "source": "almond_growing_guide.docx",
+      "paragraphs": [
+        "Almond plantings demand careful attention to rootstock and spacing. A commercial almond planting typically places 110 to 140 trees per acre, and growers plan irrigation around that density.",
+        "Returns vary by variety and region. A well managed almond block can bring a grower four thousand to seven thousand dollars per acre in a strong season. Nonpareil and Carmel are the varieties that fetch the strongest prices at market.",
+        "The almond harvest usually runs from late August into September. The major operating risk for a almond grower is irrigation water cost."
+      ]
+    },
+    {
+      "doc_id": "doc_avocado_grove",
+      "source": "avocado_growing_guide.docx",
+      "paragraphs": [
+        "Avocado groves demand careful attention to rootstock and spacing. A commercial avocado planting typically places 80 to 130 trees per acre, and growers plan irrigation around that density.",
+        "Returns vary by variety and region. A well managed avocado block can bring a grower eleven thousand to sixteen thousand dollars per acre in a strong season. Hass and Lamb Hass are the varieties that fetch the strongest prices at market.",
+        "The avocado harvest usually runs from spring through late summer. The major operating risk for a avocado grower is root rot management."
+      ]
+    },
+    {
+      "doc_id": "doc_blueberry_grove",
+      "source": "blueberry_growing_guide.docx",
+      "paragraphs": [
+        "Blueberry fields demand careful attention to rootstock and spacing. A commercial blueberry planting typically places 1,800 to 2,400 bushes per acre, and growers plan irrigation around that density.",
+        "Returns vary by variety and region. A well managed blueberry block can bring a grower twenty six thousand to thirty two thousand dollars per acre in a strong season. Duke and Bluecrop are the varieties that fetch the strongest prices at market.",
+        "The blueberry harvest usually runs from late June into August. The major operating risk for a blueberry grower is soil acidity control."
+      ]
+    },
+    {
+      "doc_id": "doc_walnut_grove",
+      "source": "walnut_growing_guide.docx",
+      "paragraphs": [
+        "Walnut plantings demand careful attention to rootstock and spacing. A commercial walnut planting typically places 60 to 90 trees per acre, and growers plan irrigation around that density.",
+        "Returns vary by variety and region. A well managed walnut block can bring a grower three thousand to five thousand dollars per acre in a strong season. Chandler and Howard are the varieties that fetch the strongest prices at market.",
+        "The walnut harvest usually runs from late September into October. The major operating risk for a walnut grower is husk fly pressure."
+      ]
+    },
+    {
+      "doc_id": "doc_inverter_vertex_cx12",
+      "source": "vertex_cx12_spec.docx",
+      "paragraphs": [
+        "The Vertex CX-12 is a commercial rooftop solar inverter. The Vertex CX-12 provides a continuous output of 12 kilowatts and is intended for mid sized commercial rooftops on a three phase supply.",
+        "The Vertex CX-12 ships with a three year warranty. Installation is frame mounted and must be commissioned by a certified electrician."
+      ]
+    },
+    {
+      "doc_id": "doc_inverter_vertex_cx30",
+      "source": "vertex_cx30_spec.docx",
+      "paragraphs": [
+        "The Vertex CX-30 is a commercial rooftop solar inverter. The Vertex CX-30 provides a continuous output of 30 kilowatts and is intended for large commercial rooftops on a three phase supply.",
+        "The Vertex CX-30 ships with a four year warranty. Installation is frame mounted and must be commissioned by a certified electrician."
+      ]
+    },
+    {
+      "doc_id": "doc_inverter_aurora_gt80",
+      "source": "aurora_gt80_spec.docx",
+      "paragraphs": [
+        "The Aurora GT-80 is a utility scale string solar inverter. The Aurora GT-80 provides a continuous output of 80 kilowatts and is intended for utility scale solar farms on a three phase supply.",
+        "The Aurora GT-80 ships with a six year warranty. Installation is frame mounted and must be commissioned by a certified electrician."
+      ]
+    },
+    {
+      "doc_id": "doc_inverter_aurora_gt125",
+      "source": "aurora_gt125_spec.docx",
+      "paragraphs": [
+        "The Aurora GT-125 is a utility scale string solar inverter. The Aurora GT-125 provides a continuous output of 125 kilowatts and is intended for large utility installations on a three phase supply.",
+        "The Aurora GT-125 ships with a seven year warranty. Installation is frame mounted and must be commissioned by a certified electrician."
+      ]
+    },
+    {
+      "doc_id": "doc_inverter_nomad_p600",
+      "source": "nomad_p600_spec.docx",
+      "paragraphs": [
+        "The Nomad P-600 is a portable field solar inverter. The Nomad P-600 provides a continuous output of 600 watts and is intended for camping and field equipment on a single phase supply.",
+        "The Nomad P-600 ships with a two year warranty. Installation is frame mounted and must be commissioned by a certified electrician."
+      ]
+    },
+    {
+      "doc_id": "doc_inverter_nomad_p1500",
+      "source": "nomad_p1500_spec.docx",
+      "paragraphs": [
+        "The Nomad P-1500 is a portable field solar inverter. The Nomad P-1500 provides a continuous output of 1.5 kilowatts and is intended for mobile worksites and trailers on a single phase supply.",
+        "The Nomad P-1500 ships with a eight year warranty. Installation is frame mounted and must be commissioned by a certified electrician."
+      ]
     }
   ],
   "queries": [
@@ -96,231 +378,512 @@
       "query": "88-AZ-0097",
       "category": "identifier",
       "expected_doc_id": "doc_gadget_gx4200",
-      "expected_snippets": ["part number 88-AZ-0097"]
+      "expected_snippets": [
+        "part number 88-AZ-0097"
+      ],
+      "reference_answer": "The GX-4200 replacement battery is part number 88-AZ-0097."
     },
     {
       "id": "q-gx4200-battery-nat",
       "query": "which replacement battery does the GX-4200 use",
       "category": "identifier",
       "expected_doc_id": "doc_gadget_gx4200",
-      "expected_snippets": ["part number 88-AZ-0097"]
+      "expected_snippets": [
+        "part number 88-AZ-0097"
+      ],
+      "reference_answer": "The GX-4200 uses replacement battery part number 88-AZ-0097."
     },
     {
       "id": "q-hx9000-battery-nat",
       "query": "which replacement battery does the HX-9000 use",
       "category": "identifier",
       "expected_doc_id": "doc_gadget_hx9000",
-      "expected_snippets": ["part number 88-AZ-0079"]
+      "expected_snippets": [
+        "part number 88-AZ-0079"
+      ],
+      "reference_answer": "The HX-9000 uses replacement battery part number 88-AZ-0079."
     },
     {
       "id": "q-error-e4521-bare",
       "query": "E-4521",
       "category": "identifier",
       "expected_doc_id": "doc_gadget_gx4200",
-      "expected_snippets": ["error code E-4521"]
+      "expected_snippets": [
+        "error code E-4521"
+      ],
+      "reference_answer": "Error code E-4521 on the GX-4200 means the internal temperature sensor has failed and the unit should be returned."
     },
     {
       "id": "q-error-e4251-bare",
       "query": "E-4251",
       "category": "identifier",
       "expected_doc_id": "doc_gadget_hx9000",
-      "expected_snippets": ["error code E-4251"]
+      "expected_snippets": [
+        "error code E-4251"
+      ],
+      "reference_answer": "Error code E-4251 on the HX-9000 indicates a wireless connectivity fault and the hub should be power cycled."
     },
     {
       "id": "q-gx4200-firmware-nat",
       "query": "what firmware version is recommended for the GX-4200",
       "category": "identifier",
       "expected_doc_id": "doc_gadget_gx4200",
-      "expected_snippets": ["version 4.0.2"]
+      "expected_snippets": [
+        "version 4.0.2"
+      ],
+      "reference_answer": "The recommended firmware for the GX-4200 is version 4.0.2."
     },
     {
       "id": "q-hx9000-firmware-nat",
       "query": "what firmware version is recommended for the HX-9000",
       "category": "identifier",
       "expected_doc_id": "doc_gadget_hx9000",
-      "expected_snippets": ["version 4.2.0"]
+      "expected_snippets": [
+        "version 4.2.0"
+      ],
+      "reference_answer": "The recommended firmware for the HX-9000 is version 4.2.0."
     },
     {
       "id": "q-ip67-bare",
       "query": "IP67",
       "category": "identifier",
       "expected_doc_id": "doc_gadget_gx4200",
-      "expected_snippets": ["rating of IP67"]
+      "expected_snippets": [
+        "rating of IP67"
+      ],
+      "reference_answer": "IP67 is the ingress protection rating of the GX-4200."
     },
     {
       "id": "q-support-phone-bare",
       "query": "1-800-555-0142",
       "category": "identifier",
       "expected_doc_id": "doc_gadget_gx4200",
-      "expected_snippets": ["1-800-555-0142"]
+      "expected_snippets": [
+        "1-800-555-0142"
+      ],
+      "reference_answer": "1-800-555-0142 is the GX-4200 technical support phone number."
     },
     {
       "id": "q-gx4200-password-nat",
       "query": "what is the default admin password on the GX-4200",
       "category": "identifier",
       "expected_doc_id": "doc_gadget_gx4200",
-      "expected_snippets": ["password is gx4200admin"]
+      "expected_snippets": [
+        "password is gx4200admin"
+      ],
+      "reference_answer": "The default administrator password on the GX-4200 is gx4200admin."
     },
     {
       "id": "q-zt500-password-nat",
       "query": "how do I sign in to the ZT-500 as administrator out of the box",
       "category": "identifier",
       "expected_doc_id": "doc_gadget_zt500",
-      "expected_snippets": ["password zt500reset"]
+      "expected_snippets": [
+        "password zt500reset"
+      ],
+      "reference_answer": "The default administrator password for the ZT-500 is zt500reset."
     },
     {
       "id": "q-apple-inc-revenue",
       "query": "what was Apple's total annual revenue",
       "category": "ambiguous_entity",
       "expected_doc_id": "doc_apple_company",
-      "expected_snippets": ["total annual revenue of 394 billion dollars"]
+      "expected_snippets": [
+        "total annual revenue of 394 billion dollars"
+      ],
+      "reference_answer": "Apple posted total annual revenue of 394 billion dollars."
     },
     {
       "id": "q-apple-grower-revenue",
       "query": "how much can someone growing apples earn from an acre",
       "category": "ambiguous_entity",
       "expected_doc_id": "doc_apple_orchard",
-      "expected_snippets": ["eight thousand and twelve thousand dollars per acre"]
+      "expected_snippets": [
+        "eight thousand and twelve thousand dollars per acre"
+      ],
+      "reference_answer": "A well managed apple block can bring a grower between eight thousand and twelve thousand dollars per acre in a strong season."
     },
     {
       "id": "q-orange-grower-revenue",
       "query": "how much does an orange grower make per acre",
       "category": "ambiguous_entity",
       "expected_doc_id": "doc_citrus_grove",
-      "expected_snippets": ["fourteen thousand to eighteen thousand dollars per acre"]
+      "expected_snippets": [
+        "fourteen thousand to eighteen thousand dollars per acre"
+      ],
+      "reference_answer": "An orange grower can expect roughly fourteen thousand to eighteen thousand dollars per acre in a good year."
     },
     {
       "id": "q-pear-revenue",
       "query": "what was Pear Computing's annual revenue",
       "category": "ambiguous_entity",
       "expected_doc_id": "doc_pear_company",
-      "expected_snippets": ["total annual revenue of 210 billion dollars"]
+      "expected_snippets": [
+        "total annual revenue of 210 billion dollars"
+      ],
+      "reference_answer": "Pear Computing reported total annual revenue of 210 billion dollars."
     },
     {
       "id": "q-apple-dividend",
       "query": "what dividend did Apple pay its shareholders",
       "category": "ambiguous_entity",
       "expected_doc_id": "doc_apple_company",
-      "expected_snippets": ["24 cents per share"]
+      "expected_snippets": [
+        "24 cents per share"
+      ],
+      "reference_answer": "Apple declared a quarterly cash dividend of 24 cents per share."
     },
     {
       "id": "q-pear-ceo",
       "query": "who runs Pear Computing",
       "category": "ambiguous_entity",
       "expected_doc_id": "doc_pear_company",
-      "expected_snippets": ["chief executive is Dana Whitfield"]
+      "expected_snippets": [
+        "chief executive is Dana Whitfield"
+      ],
+      "reference_answer": "Pear Computing's chief executive is Dana Whitfield."
     },
     {
       "id": "q-apple-ceo",
       "query": "who is the current chief executive of Apple",
       "category": "ambiguous_entity",
       "expected_doc_id": "doc_apple_company",
-      "expected_snippets": ["chief executive Tim Cook"]
+      "expected_snippets": [
+        "chief executive Tim Cook"
+      ],
+      "reference_answer": "Apple's current chief executive is Tim Cook."
     },
     {
       "id": "q-apple-founders",
       "query": "who started Apple",
       "category": "general",
       "expected_doc_id": "doc_apple_company",
-      "expected_snippets": ["founded in 1976 by Steve Jobs, Steve Wozniak, and Ronald Wayne"]
+      "expected_snippets": [
+        "founded in 1976 by Steve Jobs, Steve Wozniak, and Ronald Wayne"
+      ],
+      "reference_answer": "Apple was founded in 1976 by Steve Jobs, Steve Wozniak, and Ronald Wayne."
     },
     {
       "id": "q-pear-founders",
       "query": "who created Pear Computing",
       "category": "general",
       "expected_doc_id": "doc_pear_company",
-      "expected_snippets": ["founded in 1998 by Marcus Feld and Priya Anand"]
+      "expected_snippets": [
+        "founded in 1998 by Marcus Feld and Priya Anand"
+      ],
+      "reference_answer": "Pear Computing was founded in 1998 by Marcus Feld and Priya Anand."
     },
     {
       "id": "q-apple-employees",
       "query": "how big is Apple's workforce",
       "category": "general",
       "expected_doc_id": "doc_apple_company",
-      "expected_snippets": ["approximately 165,000 full time equivalent workers"]
+      "expected_snippets": [
+        "approximately 165,000 full time equivalent workers"
+      ],
+      "reference_answer": "Apple employs approximately 165,000 full time equivalent workers."
     },
     {
       "id": "q-orchard-varieties",
       "query": "which apple types fetch the best prices at market",
       "category": "general",
       "expected_doc_id": "doc_apple_orchard",
-      "expected_snippets": ["Honeycrisp and Fuji varieties command the highest premiums"]
+      "expected_snippets": [
+        "Honeycrisp and Fuji varieties command the highest premiums"
+      ],
+      "reference_answer": "Honeycrisp and Fuji apple varieties command the highest premiums at the packing house."
     },
     {
       "id": "q-orange-varieties",
       "query": "which oranges sell for the most",
       "category": "general",
       "expected_doc_id": "doc_citrus_grove",
-      "expected_snippets": ["Valencia and navel oranges are the varieties that fetch the strongest prices"]
+      "expected_snippets": [
+        "Valencia and navel oranges are the varieties that fetch the strongest prices"
+      ],
+      "reference_answer": "Valencia and navel oranges are the varieties that fetch the strongest prices."
     },
     {
       "id": "q-orchard-density",
       "query": "how many trees should I plant per acre in a modern apple orchard",
       "category": "general",
       "expected_doc_id": "doc_apple_orchard",
-      "expected_snippets": ["600 to 1,500 trees per acre"]
+      "expected_snippets": [
+        "600 to 1,500 trees per acre"
+      ],
+      "reference_answer": "A modern high density apple planting typically places 600 to 1,500 trees per acre."
     },
     {
       "id": "q-gx4200-temp",
       "query": "what temperatures can the outdoor sensor withstand",
       "category": "general",
       "expected_doc_id": "doc_gadget_gx4200",
-      "expected_snippets": ["minus 20 to 60 degrees Celsius"]
+      "expected_snippets": [
+        "minus 20 to 60 degrees Celsius"
+      ],
+      "reference_answer": "The GX-4200 works across a temperature range of minus 20 to 60 degrees Celsius."
     },
     {
       "id": "q-hx9000-part-bare",
       "query": "88-AZ-0079",
       "category": "identifier",
       "expected_doc_id": "doc_gadget_hx9000",
-      "expected_snippets": ["part number 88-AZ-0079"]
+      "expected_snippets": [
+        "part number 88-AZ-0079"
+      ],
+      "reference_answer": "The HX-9000 replacement battery is part number 88-AZ-0079."
     },
     {
       "id": "q-zt500-part-bare",
       "query": "55-BX-1234",
       "category": "identifier",
       "expected_doc_id": "doc_gadget_zt500",
-      "expected_snippets": ["part number 55-BX-1234"]
+      "expected_snippets": [
+        "part number 55-BX-1234"
+      ],
+      "reference_answer": "The ZT-500 replacement power module is part number 55-BX-1234."
     },
     {
       "id": "q-firmware-402-bare",
       "query": "4.0.2",
       "category": "identifier",
       "expected_doc_id": "doc_gadget_gx4200",
-      "expected_snippets": ["version 4.0.2"]
+      "expected_snippets": [
+        "version 4.0.2"
+      ],
+      "reference_answer": "Version 4.0.2 is the recommended firmware for the GX-4200."
     },
     {
       "id": "q-firmware-420-bare",
       "query": "4.2.0",
       "category": "identifier",
       "expected_doc_id": "doc_gadget_hx9000",
-      "expected_snippets": ["version 4.2.0"]
+      "expected_snippets": [
+        "version 4.2.0"
+      ],
+      "reference_answer": "Version 4.2.0 is the recommended firmware for the HX-9000."
     },
     {
       "id": "q-orchard-systems-revenue",
       "query": "what annual revenue did the Orchard Systems software company report",
       "category": "ambiguous_entity",
       "expected_doc_id": "doc_orchard_systems",
-      "expected_snippets": ["annual revenue of 3 billion dollars"]
+      "expected_snippets": [
+        "annual revenue of 3 billion dollars"
+      ],
+      "reference_answer": "Orchard Systems reported annual revenue of 3 billion dollars."
     },
     {
       "id": "q-solar-large-home",
       "query": "which solar inverter suits a big household with heavy power use",
       "category": "ambiguous_entity",
       "expected_doc_id": "doc_solar_5000",
-      "expected_snippets": ["continuous output of 5 kilowatts"]
+      "expected_snippets": [
+        "continuous output of 5 kilowatts"
+      ],
+      "reference_answer": "The SolarMax 5000, with a continuous output of 5 kilowatts, suits a large household with high energy demand."
     },
     {
       "id": "q-solar-small-home",
       "query": "which solar inverter is meant for a modest home",
       "category": "ambiguous_entity",
       "expected_doc_id": "doc_solar_3000",
-      "expected_snippets": ["continuous output of 3 kilowatts"]
+      "expected_snippets": [
+        "continuous output of 3 kilowatts"
+      ],
+      "reference_answer": "The SolarMax 3000, with a continuous output of 3 kilowatts, is meant for a small household with modest energy needs."
     },
     {
       "id": "q-solar-long-warranty",
       "query": "which solar inverter comes with the longer warranty",
       "category": "ambiguous_entity",
       "expected_doc_id": "doc_solar_5000",
-      "expected_snippets": ["extended ten year warranty"]
+      "expected_snippets": [
+        "extended ten year warranty"
+      ],
+      "reference_answer": "The SolarMax 5000 comes with the longer, extended ten year warranty."
+    },
+    {
+      "id": "q-mh-apple-pear-revenue",
+      "query": "What was Apple's total annual revenue and what was Pear Computing's total annual revenue?",
+      "category": "multi_hop",
+      "expected_doc_id": "doc_apple_company",
+      "expected_doc_ids": [
+        "doc_apple_company",
+        "doc_pear_company"
+      ],
+      "expected_snippets": [
+        "total annual revenue of 394 billion dollars",
+        "total annual revenue of 210 billion dollars"
+      ],
+      "reference_answer": "Apple posted total annual revenue of 394 billion dollars, while Pear Computing reported total annual revenue of 210 billion dollars."
+    },
+    {
+      "id": "q-mh-apple-inc-vs-grower",
+      "query": "What was Apple Inc's total annual revenue and how much can an apple grower earn per acre?",
+      "category": "multi_hop",
+      "expected_doc_id": "doc_apple_company",
+      "expected_doc_ids": [
+        "doc_apple_company",
+        "doc_apple_orchard"
+      ],
+      "expected_snippets": [
+        "total annual revenue of 394 billion dollars",
+        "eight thousand and twelve thousand dollars per acre"
+      ],
+      "reference_answer": "Apple Inc. posted total annual revenue of 394 billion dollars, while a well managed apple block can bring a grower between eight thousand and twelve thousand dollars per acre in a strong season."
+    },
+    {
+      "id": "q-mh-apple-vs-orange-acre",
+      "query": "How much does an apple grower earn per acre and how much does an orange grower earn per acre?",
+      "category": "multi_hop",
+      "expected_doc_id": "doc_apple_orchard",
+      "expected_doc_ids": [
+        "doc_apple_orchard",
+        "doc_citrus_grove"
+      ],
+      "expected_snippets": [
+        "eight thousand and twelve thousand dollars per acre",
+        "fourteen thousand to eighteen thousand dollars per acre"
+      ],
+      "reference_answer": "A well managed apple block can bring a grower between eight thousand and twelve thousand dollars per acre, while an orange grower can expect roughly fourteen thousand to eighteen thousand dollars per acre."
+    },
+    {
+      "id": "q-mh-apple-vs-orchard-systems",
+      "query": "What was Apple Inc's annual revenue and what was Orchard Systems Inc's annual revenue?",
+      "category": "multi_hop",
+      "expected_doc_id": "doc_apple_company",
+      "expected_doc_ids": [
+        "doc_apple_company",
+        "doc_orchard_systems"
+      ],
+      "expected_snippets": [
+        "total annual revenue of 394 billion dollars",
+        "annual revenue of 3 billion dollars"
+      ],
+      "reference_answer": "Apple Inc. posted total annual revenue of 394 billion dollars, while Orchard Systems Inc. reported annual revenue of 3 billion dollars."
+    },
+    {
+      "id": "q-mh-battery-parts",
+      "query": "Which replacement battery does the GX-4200 use and which replacement battery does the HX-9000 use?",
+      "category": "multi_hop",
+      "expected_doc_id": "doc_gadget_gx4200",
+      "expected_doc_ids": [
+        "doc_gadget_gx4200",
+        "doc_gadget_hx9000"
+      ],
+      "expected_snippets": [
+        "part number 88-AZ-0097",
+        "part number 88-AZ-0079"
+      ],
+      "reference_answer": "The GX-4200 replacement battery is part number 88-AZ-0097 and the HX-9000 replacement battery is part number 88-AZ-0079."
+    },
+    {
+      "id": "q-mh-firmware-versions",
+      "query": "What firmware version is recommended for the GX-4200 and what firmware version is recommended for the HX-9000?",
+      "category": "multi_hop",
+      "expected_doc_id": "doc_gadget_gx4200",
+      "expected_doc_ids": [
+        "doc_gadget_gx4200",
+        "doc_gadget_hx9000"
+      ],
+      "expected_snippets": [
+        "firmware for the GX-4200 is version 4.0.2",
+        "firmware for the HX-9000 is version 4.2.0"
+      ],
+      "reference_answer": "The recommended firmware is version 4.0.2 for the GX-4200 and version 4.2.0 for the HX-9000."
+    },
+    {
+      "id": "q-mh-three-part-numbers",
+      "query": "What is the replacement part number for the GX-4200 and the HX-9000 and the ZT-500?",
+      "category": "multi_hop",
+      "expected_doc_id": "doc_gadget_gx4200",
+      "expected_doc_ids": [
+        "doc_gadget_gx4200",
+        "doc_gadget_hx9000",
+        "doc_gadget_zt500"
+      ],
+      "expected_snippets": [
+        "part number 88-AZ-0097",
+        "part number 88-AZ-0079",
+        "part number 55-BX-1234"
+      ],
+      "reference_answer": "The GX-4200 uses part number 88-AZ-0097, the HX-9000 uses part number 88-AZ-0079, and the ZT-500 power module is part number 55-BX-1234."
+    },
+    {
+      "id": "q-mh-error-codes",
+      "query": "What does error code E-4521 mean and what does error code E-4251 mean?",
+      "category": "multi_hop",
+      "expected_doc_id": "doc_gadget_gx4200",
+      "expected_doc_ids": [
+        "doc_gadget_gx4200",
+        "doc_gadget_hx9000"
+      ],
+      "expected_snippets": [
+        "error code E-4521, the internal temperature sensor has failed",
+        "error code E-4251, a wireless connectivity fault has occurred"
+      ],
+      "reference_answer": "Error code E-4521 on the GX-4200 means the internal temperature sensor has failed and the unit should be returned; error code E-4251 on the HX-9000 means a wireless connectivity fault has occurred and the hub should be power cycled."
+    },
+    {
+      "id": "q-mh-solar-warranty",
+      "query": "What warranty comes with the SolarMax 3000 and what warranty comes with the SolarMax 5000?",
+      "category": "multi_hop",
+      "expected_doc_id": "doc_solar_3000",
+      "expected_doc_ids": [
+        "doc_solar_3000",
+        "doc_solar_5000"
+      ],
+      "expected_snippets": [
+        "standard five year warranty",
+        "extended ten year warranty"
+      ],
+      "reference_answer": "The SolarMax 3000 ships with a standard five year warranty and the SolarMax 5000 ships with an extended ten year warranty."
+    },
+    {
+      "id": "q-mh-tree-density",
+      "query": "How many trees per acre are planted in a modern apple orchard and how many are planted in a citrus grove?",
+      "category": "multi_hop",
+      "expected_doc_id": "doc_apple_orchard",
+      "expected_doc_ids": [
+        "doc_apple_orchard",
+        "doc_citrus_grove"
+      ],
+      "expected_snippets": [
+        "600 to 1,500 trees per acre",
+        "100 to 200 trees per acre"
+      ],
+      "reference_answer": "A modern high density apple planting typically places 600 to 1,500 trees per acre, while citrus groves are planted at around 100 to 200 trees per acre."
+    },
+    {
+      "id": "q-mh-founders",
+      "query": "Who founded Apple and who founded Pear Computing?",
+      "category": "multi_hop",
+      "expected_doc_id": "doc_apple_company",
+      "expected_doc_ids": [
+        "doc_apple_company",
+        "doc_pear_company"
+      ],
+      "expected_snippets": [
+        "founded in 1976 by Steve Jobs, Steve Wozniak, and Ronald Wayne",
+        "founded in 1998 by Marcus Feld and Priya Anand"
+      ],
+      "reference_answer": "Apple was founded in 1976 by Steve Jobs, Steve Wozniak, and Ronald Wayne; Pear Computing was founded in 1998 by Marcus Feld and Priya Anand."
+    },
+    {
+      "id": "q-mh-ceos",
+      "query": "Who is the chief executive of Apple and who is the chief executive of Pear Computing?",
+      "category": "multi_hop",
+      "expected_doc_id": "doc_apple_company",
+      "expected_doc_ids": [
+        "doc_apple_company",
+        "doc_pear_company"
+      ],
+      "expected_snippets": [
+        "led by chief executive Tim Cook",
+        "current chief executive is Dana Whitfield"
+      ],
+      "reference_answer": "Apple is led by chief executive Tim Cook, who stepped into the top job in 2011; Pear Computing's current chief executive is Dana Whitfield."
     }
   ]
 }

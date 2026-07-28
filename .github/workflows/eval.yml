@@ -1,0 +1,93 @@
+name: eval-gate
+
+# Phase 11 — evaluation-as-a-discipline. Every push/PR re-runs the eval harnesses
+# and FAILS the build if generation or retrieval quality regresses below a floor.
+#
+# The default gate is fully HERMETIC: no API keys. It runs the generation harness on
+# its deterministic OFFLINE profile (extractive generator + lexical judge + lexical
+# reranker) and gates the DETERMINISTIC metrics (context-recall / -precision, computed
+# from the retrieval ground truth) plus the surrogate faithfulness/relevancy floors —
+# so a retrieval or prompt regression turns the build red without any paid provider.
+#
+# The optional `gen-gate-neural` job runs the REAL provider (Gemini) and enforces the
+# stricter neural thresholds, but ONLY when a GEMINI_API_KEY repo secret is configured
+# — it is skipped (not failed) otherwise.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  gen-gate-offline:
+    name: Generation-quality gate (offline surrogate)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Pre-fetch NLTK sentence tokenizer
+        run: python -c "import nltk; nltk.download('punkt_tab', quiet=True); nltk.download('punkt', quiet=True)"
+
+      - name: Retrieval harness (smoke — must ingest + score cleanly)
+        run: python -m app.eval.harness --k 5 --out eval/_ci_retrieval.json
+
+      - name: Generation-quality regression gate
+        run: python -m app.eval.gen_harness --provider offline --gate --no-write
+
+      - name: Unit tests for the eval harness
+        run: python -m pytest tests/test_gen_eval.py tests/test_eval_harness.py -q
+
+  gen-gate-neural:
+    name: Generation-quality gate (neural — Gemini)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    # Only run when a real provider key is available; skipped, never failed, otherwise.
+    if: ${{ github.event_name != 'pull_request' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Guard — skip cleanly when no GEMINI_API_KEY secret is set
+        id: guard
+        run: |
+          if [ -z "${{ secrets.GEMINI_API_KEY }}" ]; then
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            echo "No GEMINI_API_KEY secret — skipping the neural gate."
+          else
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/setup-python@v5
+        if: steps.guard.outputs.run == 'true'
+        with:
+          python-version: "3.10"
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - name: Install dependencies
+        if: steps.guard.outputs.run == 'true'
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Pre-fetch NLTK sentence tokenizer
+        if: steps.guard.outputs.run == 'true'
+        run: python -c "import nltk; nltk.download('punkt_tab', quiet=True); nltk.download('punkt', quiet=True)"
+
+      - name: Neural generation-quality gate
+        if: steps.guard.outputs.run == 'true'
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: python -m app.eval.gen_harness --provider gemini --gate --no-write

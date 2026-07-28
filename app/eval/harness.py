@@ -194,31 +194,61 @@ def ingest(eval_set: dict, session_factory, chroma, provider, workdir: Path, bm2
     return get_collection(chroma, EVAL_USER_ID)
 
 
+def expected_docs_for(q: dict) -> list[str]:
+    """The document(s) a query's answer lives in.
+
+    Single-hop queries carry `expected_doc_id`. MULTI-HOP queries carry
+    `expected_doc_ids` (a list) because their answer is only complete once evidence
+    from every listed document is gathered — that is precisely what makes them
+    unanswerable by one top-k pass. `expected_doc_id` stays populated on those too
+    (the primary document), so every single-doc code path keeps working unchanged.
+    """
+    docs = q.get("expected_doc_ids")
+    if docs:
+        return list(docs)
+    return [q["expected_doc_id"]]
+
+
 def resolve_ground_truth(collection, eval_set: dict) -> dict[str, set[str]]:
     """
     Map each query id → the set of REAL stored chunk_ids that answer it, by matching
     `expected_snippets` (whitespace-normalized substring) against stored chunk text,
-    restricted to the query's expected_doc_id.
+    restricted to the query's expected document(s).
+
+    EVERY snippet must resolve. A snippet that matches nothing is a fixture/chunking
+    mismatch, and on a multi-hop query it would silently shrink the ground-truth set
+    to the documents that did match — manufacturing a context-recall score that looks
+    fine while measuring less than it claims to. Failing loudly is the whole point of
+    a harness you intend to quote numbers from.
     """
     truth: dict[str, set[str]] = {}
     # Cache stored chunks per doc: {doc_id: [(chunk_id, normalized_text), ...]}
     per_doc: dict[str, list[tuple[str, str]]] = {}
     for q in eval_set["queries"]:
-        doc_id = q["expected_doc_id"]
-        if doc_id not in per_doc:
-            got = collection.get(where={"doc_id": doc_id}, include=["documents"])
-            per_doc[doc_id] = list(zip(got["ids"], [_norm_ws(t) for t in got["documents"]]))
+        doc_ids = expected_docs_for(q)
+        for doc_id in doc_ids:
+            if doc_id not in per_doc:
+                got = collection.get(where={"doc_id": doc_id}, include=["documents"])
+                per_doc[doc_id] = list(zip(got["ids"], [_norm_ws(t) for t in got["documents"]]))
 
         expected: set[str] = set()
+        unmatched: list[str] = []
         for snippet in q["expected_snippets"]:
             needle = _norm_ws(snippet)
-            for cid, text in per_doc[doc_id]:
-                if needle in text:
-                    expected.add(cid)
-        if not expected:
+            hits = {
+                cid
+                for doc_id in doc_ids
+                for cid, text in per_doc[doc_id]
+                if needle in text
+            }
+            if hits:
+                expected |= hits
+            else:
+                unmatched.append(snippet)
+        if unmatched:
             raise RuntimeError(
-                f"query {q['id']}: no stored chunk in {doc_id} contains any expected snippet "
-                f"{q['expected_snippets']} — fixture/chunking mismatch"
+                f"query {q['id']}: expected snippet(s) {unmatched} matched no stored chunk "
+                f"in {doc_ids} — fixture/chunking mismatch"
             )
         truth[q["id"]] = expected
     return truth
