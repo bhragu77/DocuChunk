@@ -17,6 +17,7 @@ from typing import Iterator
 import httpx
 
 from app.generation.base import GenerationError
+from app.generation.usage import set_last_usage
 
 logger = logging.getLogger(__name__)
 
@@ -74,6 +75,16 @@ class OpenAICompatProvider:
         except Exception as exc:  # transport / HTTP / decode → unrecoverable
             logger.warning("OpenAI-compat chat/completions failed: %s", exc)
             raise GenerationError(f"OpenAI-compatible generation failed: {exc}") from exc
+
+        usage = (data or {}).get("usage") or {}
+        set_last_usage(
+            {
+                "input_tokens": usage.get("prompt_tokens"),
+                "output_tokens": usage.get("completion_tokens"),
+            }
+            if usage
+            else None
+        )
 
         choices = (data or {}).get("choices") or []
         if not choices:

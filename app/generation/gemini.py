@@ -19,8 +19,21 @@ import logging
 from typing import Iterator
 
 from app.generation.base import GenerationError
+from app.generation.usage import set_last_usage
 
 logger = logging.getLogger(__name__)
+
+
+def _gemini_usage(resp) -> dict | None:
+    """Extract provider-reported token usage (never estimated). None if absent."""
+    um = getattr(resp, "usage_metadata", None)
+    if um is None:
+        return None
+    it = getattr(um, "prompt_token_count", None)
+    ot = getattr(um, "candidates_token_count", None)
+    if it is None and ot is None:
+        return None
+    return {"input_tokens": it, "output_tokens": ot}
 
 
 class GeminiProvider:
@@ -82,6 +95,8 @@ class GeminiProvider:
             logger.warning("Gemini generate_content failed: %s", exc)
             raise GenerationError(f"Gemini generation failed: {exc}") from exc
 
+        # Per-request usage (contextvar — isolated across concurrent requests).
+        set_last_usage(_gemini_usage(resp))
         # resp.text is None on a safety block / empty candidate → treat as refusal ("").
         return (getattr(resp, "text", None) or "").strip()
 
@@ -102,6 +117,7 @@ class GeminiProvider:
         max_tokens = self._default_max_tokens if max_tokens is None else max_tokens
         temperature = self._default_temperature if temperature is None else temperature
 
+        set_last_usage(None)
         try:
             stream = self._client.models.generate_content_stream(
                 model=self.model_name,
@@ -109,6 +125,11 @@ class GeminiProvider:
                 config={"max_output_tokens": max_tokens, "temperature": temperature},
             )
             for chunk in stream:
+                # Usage arrives on chunks (cumulative); the final one wins. Written to
+                # the contextvar in the CONSUMING task's context → per-request isolated.
+                usage = _gemini_usage(chunk)
+                if usage is not None:
+                    set_last_usage(usage)
                 text = getattr(chunk, "text", None)
                 if text:
                     yield text

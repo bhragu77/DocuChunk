@@ -14,6 +14,8 @@ from __future__ import annotations
 import logging
 from typing import Iterator
 
+from app.generation.usage import set_last_usage
+
 logger = logging.getLogger(__name__)
 
 DEFAULT_STUB_RESPONSE = "This is a stub answer."
@@ -38,6 +40,13 @@ class StubProvider:
         self.calls.append(prompt)
         if self.error is not None:
             raise self.error
+        # The offline stub reports its own deterministic token usage (word counts) so
+        # the cost pipeline is demonstrable without a paid provider. Priced at $0, so
+        # the resulting cost is a correct 0.0. Written to the per-request contextvar.
+        set_last_usage({
+            "input_tokens": len(prompt.split()),
+            "output_tokens": len(self.response.split()),
+        })
         return self.response
 
     def generate_stream(
@@ -56,5 +65,6 @@ class StubProvider:
         if self.error is not None:
             raise self.error
         words = self.response.split()
+        set_last_usage({"input_tokens": len(prompt.split()), "output_tokens": len(words)})
         for i, word in enumerate(words):
             yield word if i == len(words) - 1 else word + " "

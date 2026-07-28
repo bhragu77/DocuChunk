@@ -18,6 +18,8 @@ from typing import Callable, Iterator
 
 from app.generation.base import GenerationError, GenerationProvider
 from app.generation.stub import StubProvider
+from app.generation.usage import get_last_usage
+from app.observability import get_prompt_version, record_generation
 
 logger = logging.getLogger(__name__)
 
@@ -126,6 +128,14 @@ def build_verify_provider(settings, gen_provider: GenerationProvider | None = No
 # pass a prompt, and logs one `llm_call` line per call for observability (Story 7
 # #5): enough to later compute cache hit rate, cost/answer, and verify accuracy.
 
+# NOTE (Phase 9B): each wrapper feeds the provider's REAL token usage (not the
+# len//4 log estimate) to record_generation, which computes cost from pricing.py
+# and attaches usage+cost to the active generate/verify span. This is observability
+# only — the generated text and control flow are unchanged, and it is a no-op under
+# the NullTracer. record_generation reads the CURRENT span, so it must run while the
+# generate/verify span is on the stack (it is — these callables are invoked inside
+# `with span("generate"/"verify")`).
+
 def make_llm_fn(provider: GenerationProvider, settings) -> Callable[[str], str]:
     """Generation callable — strong model, GEN_* caps, role=generate."""
     def _fn(prompt: str) -> str:
@@ -135,6 +145,10 @@ def make_llm_fn(provider: GenerationProvider, settings) -> Callable[[str], str]:
         logger.info(
             "llm_call provider=%s model=%s role=generate tokens_in≈%d tokens_out≈%d",
             provider.provider_name, provider.model_name, _est_tokens(prompt), _est_tokens(result),
+        )
+        record_generation(
+            provider.model_name, get_last_usage(),
+            prompt_version=get_prompt_version(),
         )
         return result
     return _fn
@@ -147,10 +161,105 @@ def make_llm_stream_fn(provider: GenerationProvider, settings) -> Callable[[str]
             "llm_call provider=%s model=%s role=generate_stream tokens_in≈%d tokens_out≈(streamed)",
             provider.provider_name, provider.model_name, _est_tokens(prompt),
         )
-        return provider.generate_stream(
+        version = get_prompt_version()
+        inner = provider.generate_stream(
             prompt, max_tokens=settings.gen_max_tokens, temperature=settings.gen_temperature
         )
+
+        def _wrapped() -> Iterator[str]:
+            # Usage is known only once the stream is exhausted (final chunk). The
+            # finally runs while the generate span is still active, so cost lands
+            # on it. Yielded text is byte-identical to the un-instrumented stream.
+            try:
+                for chunk in inner:
+                    yield chunk
+            finally:
+                record_generation(
+                    provider.model_name, get_last_usage(),
+                    prompt_version=version,
+                )
+
+        return _wrapped()
     return _fn
+
+
+def build_gen_registry(settings) -> dict[str, dict]:
+    """
+    Chat model-picker registry: {key: {llm_fn, llm_stream_fn, model_name,
+    provider_name}} for the per-request `model` field. Keys are the UI's stable
+    choices — "gemini" (accurate cloud tier) and "offline" (a small local LLM via
+    Ollama's OpenAI-compatible API).
+
+    Each entry is built BEST-EFFORT and INDEPENDENTLY: a missing key/URL (or an
+    unreachable Ollama) for one leaves the other available, and both absent simply
+    means the endpoint falls back to the default app.state.llm_fn seam. This is
+    purely ADDITIVE — the default generation wiring (build_gen_provider) is
+    untouched, so nothing that doesn't send `model` changes behavior.
+    """
+    registry: dict[str, dict] = {}
+
+    def _entry(provider: GenerationProvider) -> dict:
+        return {
+            "llm_fn": make_llm_fn(provider, settings),
+            "llm_stream_fn": make_llm_stream_fn(provider, settings),
+            "model_name": provider.model_name,
+            "provider_name": provider.provider_name,
+        }
+
+    # "gemini" — the accurate cloud tier. Available whenever a key is configured,
+    # regardless of what GEN_PROVIDER (the default path) is set to.
+    if settings.gemini_api_key:
+        try:
+            from app.generation.gemini import GeminiProvider
+            registry["gemini"] = _entry(GeminiProvider(
+                api_key=settings.gemini_api_key,
+                model_name=settings.gen_model,
+                timeout_s=settings.gen_timeout_s,
+                max_tokens=settings.gen_max_tokens,
+                temperature=settings.gen_temperature,
+            ))
+        except Exception as exc:  # a bad SDK/import must not sink the other entry
+            logger.warning("Chat registry: 'gemini' entry unavailable (%s)", exc)
+
+    # "offline" — a small local LLM served by Ollama over its OpenAI-compatible API.
+    # Only offered if Ollama actually ANSWERS a quick probe, so the picker never
+    # shows a tier that would fail on use (constructing the provider does no I/O, so
+    # a probe is the only honest availability signal).
+    if settings.offline_enabled and settings.offline_base_url:
+        if _offline_reachable(settings.offline_base_url):
+            try:
+                from app.generation.openai_compat import OpenAICompatProvider
+                registry["offline"] = _entry(OpenAICompatProvider(
+                    base_url=settings.offline_base_url,
+                    api_key=settings.offline_api_key or "ollama",
+                    model_name=settings.offline_model,
+                    # OFFLINE_TIMEOUT_S, not GEN_TIMEOUT_S: a local CPU model needs
+                    # far longer than the cloud tier (see config for the numbers).
+                    timeout_s=settings.offline_timeout_s,
+                    max_tokens=settings.gen_max_tokens,
+                    temperature=settings.gen_temperature,
+                ))
+            except Exception as exc:
+                logger.warning("Chat registry: 'offline' entry unavailable (%s)", exc)
+        else:
+            logger.warning(
+                "Chat registry: OFFLINE_ENABLED but Ollama at %s is unreachable — "
+                "'offline' tier hidden from the picker.", settings.offline_base_url,
+            )
+
+    return registry
+
+
+def _offline_reachable(base_url: str, timeout_s: float = 2.0) -> bool:
+    """Quick one-shot probe of the Ollama OpenAI-compat endpoint (GET /models).
+    Returns False on any error/timeout so the offline tier is simply omitted."""
+    import httpx
+    try:
+        resp = httpx.get(f"{base_url.rstrip('/')}/models", timeout=timeout_s)
+        return resp.status_code < 500
+    except Exception as exc:
+        logger.info("Ollama probe failed for %s: %s", base_url, exc)
+        return False
 
 
 def make_verify_fn(provider: GenerationProvider, settings) -> Callable[[str], str]:
@@ -163,5 +272,7 @@ def make_verify_fn(provider: GenerationProvider, settings) -> Callable[[str], st
             "llm_call provider=%s model=%s role=verify tokens_in≈%d tokens_out≈%d",
             provider.provider_name, provider.model_name, _est_tokens(prompt), _est_tokens(result),
         )
+        # No prompt_version: the verify prompt is not the grounded-answer template.
+        record_generation(provider.model_name, get_last_usage())
         return result
     return _fn

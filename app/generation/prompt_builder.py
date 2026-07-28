@@ -38,8 +38,19 @@ from app.generation.query_classifier import (
     hint_for,
     task_instructions_for,
 )
+from app.observability import set_prompt_version
 
 logger = logging.getLogger(__name__)
+
+# ── Prompt-template versions (Phase 9B) ───────────────────────────────────────
+# Git remains the SINGLE SOURCE OF TRUTH for the template bodies below; prompts are
+# NOT fetched from Langfuse at request time. These identifiers are recorded on the
+# generate span so any answer can be tied back to the exact template that produced
+# it. Bump the matching version when you edit that template's body.
+GROUNDED_SYSTEM_VERSION = "grounded-system/v2"      # _SYSTEM_INSTRUCTIONS
+THIN_CONTEXT_NOTE_VERSION = "thin-context/v1"       # _THIN_CONTEXT_NOTE
+# The composite identifier for the assembled grounded-QA prompt.
+GROUNDED_PROMPT_VERSION = "grounded-qa/v3"
 
 if TYPE_CHECKING:  # avoid a runtime import cycle with retrieval.py
     from app.pipeline.retrieval import ScoredChunk
@@ -279,6 +290,16 @@ def build_grounded_prompt(
     query_hint = hint_for(query_type) if query_type is not None else ""
     thin_note = _THIN_CONTEXT_NOTE if thin_context else ""
     task_block = task_instructions_for(answer_task)
+
+    # Record WHICH template version served this answer (read by the generate span via
+    # the generation seam). The composite reflects the variants that actually shaped
+    # the prompt — the answer-task block and the thin-context note — so the recorded
+    # id maps 1:1 to the emitted template. Observability only; behaviour unchanged.
+    task_tag = getattr(answer_task, "value", None) or "answer"
+    version = f"{GROUNDED_PROMPT_VERSION}+task:{task_tag}"
+    if thin_context:
+        version += "+thin"
+    set_prompt_version(version)
 
     display_texts = _display_texts(chunks, doc_chunks_fetcher, settings)
 

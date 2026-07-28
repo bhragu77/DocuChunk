@@ -39,10 +39,19 @@ def normalize_query(query: str) -> str:
     return query.strip().lower()
 
 
-def compute_cache_key(user_id: str, doc_id: str, doc_version: int, query: str) -> str:
+def compute_cache_key(
+    user_id: str, doc_id: str, doc_version: int, query: str, model: str | None = None
+) -> str:
     """Deterministic, version-aware key. Any input change (incl. doc_version on a
-    re-upload, or query case after normalization) yields a different key."""
+    re-upload, or query case after normalization) yields a different key.
+
+    `model` (the chat picker's tier: "gemini" | "offline") is appended ONLY when
+    provided, so the two models never serve each other's cached answers. Omitting
+    it (the default path / pre-picker callers) yields the exact pre-existing key —
+    no cache migration, and existing entries stay valid."""
     raw = f"{user_id}:{doc_id}:{doc_version}:{normalize_query(query)}"
+    if model:
+        raw += f":{model}"
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
 

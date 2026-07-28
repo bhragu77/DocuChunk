@@ -69,6 +69,27 @@ class Settings(BaseSettings):
     openai_compat_api_key: str = ""
     openai_compat_model: str = ""
 
+    # ── Chat model picker: the "offline" tier ─────────────────────────────────
+    # The chat UI lets the user pick per-message between "gemini" (accurate cloud)
+    # and "offline" (a small local LLM served by Ollama over its OpenAI-compatible
+    # API, so it reuses OpenAICompatProvider — no new provider code). This is
+    # INDEPENDENT of GEN_PROVIDER (the default answer path): both can be wired at
+    # once, and only the GENERATION model swaps per request — retrieval, reranking,
+    # prompt assembly and verification are unchanged. When OFFLINE_ENABLED is false
+    # or Ollama is unreachable, the UI shows "offline" as unavailable and the
+    # endpoint falls back to the default generation seam.
+    offline_enabled: bool = False
+    offline_base_url: str = "http://ollama:11434/v1"   # Ollama OpenAI-compat endpoint
+    offline_api_key: str = "ollama"                    # Ollama ignores it; the client needs non-empty
+    offline_model: str = "qwen2.5:1.5b"                # ~1 GB, CPU-friendly local LLM
+    # Local CPU inference is 10-50x slower than a cloud call, so the offline tier
+    # gets its OWN timeout instead of sharing GEN_TIMEOUT_S (tuned for Gemini).
+    # A 1.5B model on ~4 CPU cores runs ~25 tok/s prefill and ~13 tok/s decode, so a
+    # ~500-token agent planner prompt alone takes ~20s — and each agent step re-sends
+    # the evidence gathered so far, making later prompts several times larger. At 30s
+    # every agent run died on step 1 while the same run on Gemini succeeded.
+    offline_timeout_s: float = 180.0
+
     # Model tiering (Story 7) — the VERIFY_* tier. Generation (the creative call)
     # uses GEN_*; verification (citation Tier-2 judge + groundedness — mechanical
     # yes/no work) uses a CHEAPER, lower-temperature, hard-capped model. The seam
@@ -117,6 +138,23 @@ class Settings(BaseSettings):
     # A safety rail for very large docs (the prompt builder's GEN_MAX_INPUT_TOKENS
     # budget still trims text); 0 = no cap. Map-reduce for huge docs is a later phase.
     scope_whole_doc_max_chunks: int = 400
+
+    # Agentic retrieval (ReAct) — an OPTIONAL layer over /generate/answer that lets
+    # the model plan multi-hop retrieval before the grounded-answer step runs. It is
+    # exposed on its OWN endpoint (POST /generate/agent) and ships DARK: AGENT_ENABLED
+    # is only a hint the endpoint echoes — the route exists regardless — while the
+    # loop's real safety comes from AGENT_MAX_STEPS + loop detection + fallback-to-RAG.
+    #   AGENT_MODE          — "react" (JSON-action loop; the only mode today). Native
+    #                         function-calling is a later drop-in behind the same loop.
+    #   AGENT_ALLOWED_TOOLS — comma list restricting which tools may run ("" = all).
+    agent_enabled: bool = False
+    agent_max_steps: int = 5
+    agent_mode: str = "react"
+    agent_allowed_tools: str = ""
+
+    @property
+    def agent_allowed_tools_list(self) -> list[str]:
+        return [t.strip() for t in self.agent_allowed_tools.split(",") if t.strip()]
 
     # Generation-quality fix — anti-verbatim guard (Part 5). A post-generation string
     # check (no LLM). A sentence whose longest contiguous token run against any source
