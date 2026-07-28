@@ -16,6 +16,7 @@ wired into app.state in main.py's lifespan.
 import logging
 import math
 import re
+import time
 from typing import Callable
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -44,6 +45,13 @@ from app.generation.quality_guard import check_verbatim
 from app.generation.streaming import sse_event, stream_generation
 from app.models.document import Document
 from app.models.user import User
+from app.observability import (
+    adopt,
+    capture_text_enabled,
+    current_trace_id,
+    hash_user_id,
+    span,
+)
 from app.pipeline.retrieval import (
     ScoredChunk,
     fetch_whole_document,
@@ -113,6 +121,10 @@ class GenerateAnswerRequest(BaseModel):
     query: str = Field(..., min_length=1, max_length=512)
     doc_id: str | None = None
     top_k: int = Field(default=8, ge=1, le=50)
+    # Chat model picker: "gemini" (accurate cloud) | "offline" (local Ollama LLM).
+    # None → the server's default generation seam (backward compatible). An unknown
+    # or unconfigured value also falls back to the default rather than erroring.
+    model: str | None = Field(default=None)
 
 
 class Citation(BaseModel):
@@ -457,6 +469,22 @@ def _generation_error_response(
     )
 
 
+# ── Observability helpers (Phase 9A) ──────────────────────────────────────────
+
+def _attach_verify_scores(vsp, response: GenerateAnswerResponse) -> None:
+    """Attach the verification scores + booleans to the "verify" span, all derived
+    from the already-built response (no extra work, no logic change)."""
+    signals = response.confidence_signals or {}
+    vsp.score("groundedness", float(signals.get("groundedness", 0.0)))
+    vsp.score("citation_validity", float(signals.get("citation_coverage", 0.0)))
+    vsp.score("confidence", float(response.confidence))
+    vsp.update(
+        grounded=bool(response.grounded),
+        verified=bool(response.verified),
+        abstained=bool(response.abstained),
+    )
+
+
 # ── Part 4a — thin-result retry helpers ───────────────────────────────────────
 
 # A "code" token: carries BOTH a letter and a digit (GX-4200, 4000mAh). Dropping
@@ -509,6 +537,26 @@ def _cached_sse_stream(cached: dict):
         yield sse_event("verification", cached)
 
     return StreamingResponse(_gen(), media_type="text/event-stream")
+
+
+@generate_router.get("/models")
+def list_generation_models(request: Request):
+    """Chat model picker discovery: which generation tiers are wired right now.
+
+    The UI calls this to build the picker and to HIDE tiers that aren't configured
+    (e.g. "offline" when Ollama is unreachable) rather than letting the user pick a
+    model that would silently fall back. `default` is the tier the UI should
+    pre-select (gemini preferred, else offline, else none → server default seam)."""
+    registry = getattr(request.app.state, "gen_registry", None) or {}
+    # Labels name the TRADE-OFF, so the picker reads as a choice: the cloud tier is
+    # the accurate one, the Ollama tier is the free one (no API cost, runs locally).
+    _labels = {"gemini": "Gemini (accurate)", "offline": "Ollama (free)"}
+    models = [
+        {"key": key, "model_name": entry["model_name"], "label": _labels.get(key, key)}
+        for key, entry in registry.items()
+    ]
+    default = "gemini" if "gemini" in registry else ("offline" if "offline" in registry else None)
+    return {"models": models, "default": default}
 
 
 @generate_router.post("/answer", response_model=GenerateAnswerResponse)
@@ -578,6 +626,24 @@ async def generate_answer_endpoint(
     verify_fn: Callable[[str], str] | None = getattr(request.app.state, "verify_fn", None) or llm_fn
     cache = getattr(request.app.state, "answer_cache", None)
 
+    # ── Chat model picker ───────────────────────────────────────────────────────
+    # The per-request `model` ("gemini" | "offline") selects the GENERATION backend
+    # from the startup registry. Retrieval, reranking, prompt assembly and
+    # verification are UNCHANGED — only the answer-generating model swaps. An unknown
+    # or unconfigured selection falls back to the default seam (llm_fn / llm_stream_fn
+    # from app.state). selected_model is threaded into the cache key so the two tiers
+    # never serve each other's cached answers.
+    registry = getattr(request.app.state, "gen_registry", None) or {}
+    selected_model = payload.model if payload.model in registry else None
+    if selected_model:
+        _entry = registry[selected_model]
+        llm_fn = _entry["llm_fn"]
+        active_stream_fn = _entry["llm_stream_fn"]
+        active_gen_model_name = _entry["model_name"]
+    else:
+        active_stream_fn = getattr(request.app.state, "llm_stream_fn", None)
+        active_gen_model_name = getattr(request.app.state, "gen_model_name", None)
+
     # ── Story 7 CACHE CHECK — before any retrieval / generation / verification ──
     # Only single-document, version-resolvable queries are cached (multi-doc
     # queries have no single doc_version to key on / bust with).
@@ -586,7 +652,8 @@ async def generate_answer_endpoint(
         doc_version = _resolve_doc_version(db, current_user.id, payload.doc_id)
         if payload.doc_id and doc_version is not None:
             cache_key = compute_cache_key(
-                current_user.id, payload.doc_id, doc_version, payload.query
+                current_user.id, payload.doc_id, doc_version, payload.query,
+                model=selected_model,
             )
             cached = cache.get(cache_key)
             if cached is not None:
@@ -598,6 +665,28 @@ async def generate_answer_endpoint(
                     return _cached_sse_stream(cached)
                 return GenerateAnswerResponse.model_validate(cached)
 
+    # ── Observability root span (Phase 9A) ─────────────────────────────────────
+    # Everything from retrieval through verification hangs off "rag.request". The
+    # root is driven manually (not a `with`) because the streaming path returns a
+    # StreamingResponse whose generator runs AFTER this coroutine returns — the
+    # generator closes the root in its own finally. Fail-open: get_tracer() is a
+    # no-op unless tracing is enabled, so this is byte-identical to before then.
+    root_ctx = span(
+        "rag.request",
+        user=hash_user_id(current_user.id),
+        doc_id=payload.doc_id,
+        top_k=payload.top_k,
+        stream=use_stream,
+        query_type=query_type.value,
+        retrieval_scope=scope.value,
+        answer_task=answer_task.value,
+        **({"query": payload.query} if capture_text_enabled() else {}),
+    )
+    root = root_ctx.__enter__()
+    # Captured while the root scope is active, for the streaming generator (which
+    # runs in a copied context and re-establishes the root as parent via adopt()).
+    root_trace_id = current_trace_id()
+
     # ── GLOBAL scope — feed the WHOLE document, bypass top-k ────────────────────
     # For a whole-document question with a single doc in scope, top-k retrieval
     # drops the chunks a complete answer needs. Fetch every chunk in reading order
@@ -606,27 +695,38 @@ async def generate_answer_endpoint(
     top_chunks: list[ScoredChunk] = []
     used_whole_doc = False
     if scope == RetrievalScope.GLOBAL and payload.doc_id:
-        whole = fetch_whole_document(chroma, current_user.id, payload.doc_id)
-        max_chunks = getattr(settings, "scope_whole_doc_max_chunks", 0)
-        if max_chunks and len(whole) > max_chunks:
-            whole = whole[:max_chunks]  # safety rail for very large docs
-        if whole:
-            top_chunks = whole
-            used_whole_doc = True
+        with span("retrieve", k=payload.top_k, scope="global") as rsp:
+            whole = fetch_whole_document(chroma, current_user.id, payload.doc_id)
+            max_chunks = getattr(settings, "scope_whole_doc_max_chunks", 0)
+            if max_chunks and len(whole) > max_chunks:
+                whole = whole[:max_chunks]  # safety rail for very large docs
+            if whole:
+                top_chunks = whole
+                used_whole_doc = True
+            rsp.update(
+                candidate_count=len(whole),
+                returned_chunk_ids=[c.chunk_id for c in top_chunks][:200],
+            )
 
     if not used_whole_doc:
         # ── LOCAL scope — the existing top-k hybrid + rerank path (unchanged) ────
-        candidates = hybrid_search(
-            query=payload.query,
-            user_id=current_user.id,
-            chroma_client=chroma,
-            bm25_index=bm25,
-            embed_fn=embed_fn,
-            doc_id=payload.doc_id,
-            top_n=50,
-        )
+        with span("retrieve", k=payload.top_k, scope="local") as rsp:
+            candidates = hybrid_search(
+                query=payload.query,
+                user_id=current_user.id,
+                chroma_client=chroma,
+                bm25_index=bm25,
+                embed_fn=embed_fn,
+                doc_id=payload.doc_id,
+                top_n=50,
+            )
+            rsp.update(
+                candidate_count=len(candidates),
+                returned_chunk_ids=[c.chunk_id for c in candidates][:200],
+            )
 
         if not candidates:
+            root_ctx.__exit__(None, None, None)
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="No relevant content found. Upload documents and ensure they are processed.",
@@ -687,6 +787,8 @@ async def generate_answer_endpoint(
     # This is returned as JSON even for stream=true: there is nothing to stream, and
     # it is NEVER cached (an error is not a valid cached answer).
     if llm_fn is None:
+        root.update(error="generation_not_configured")
+        root_ctx.__exit__(None, None, None)
         return GenerateAnswerResponse(
             query=payload.query,
             answer=None,
@@ -726,66 +828,100 @@ async def generate_answer_endpoint(
 
     if not use_stream:
         # ── Synchronous path (backward compatible) ──────────────────────────
+        # generate_answer emits the prompt_build + generate child spans internally
+        # (so they sit as siblings under rag.request); we pass the model name in for
+        # the generate span's label. NOTE: token counts / ttft / finish_reason must
+        # come from the provider usage field, which the str-returning llm_fn seam
+        # does not expose — Phase 9B records them; a tiktoken estimate is NOT used.
         try:
             answer_draft = generate_answer(
                 payload.query, top_chunks, llm_fn=llm_fn,
                 doc_chunks_fetcher=doc_chunks_fetcher,
                 query_type=query_type, thin_context=thin_context,
                 answer_task=answer_task,
+                model_name=active_gen_model_name,
             )
         except GenerationError as exc:
             # Runtime LLM failure (e.g. Gemini 429 / timeout) → honest error, not 500.
             logger.warning("Generation failed: %s", exc)
+            root.update(error="generation_failed")
+            root_ctx.__exit__(None, None, None)
             return _generation_error_response(
                 payload.query, citations, "generation_failed", query_type.value
             )
-        response = _build_answer_response(
-            payload.query, top_chunks, citations, answer_draft, verify_fn,
-            query_type.value, scope.value, answer_task,
-        )
+        with span("verify") as vsp:
+            response = _build_answer_response(
+                payload.query, top_chunks, citations, answer_draft, verify_fn,
+                query_type.value, scope.value, answer_task,
+            )
+            _attach_verify_scores(vsp, response)
+        root.update(abstained=bool(response.abstained))
         _maybe_cache(response)
+        root_ctx.__exit__(None, None, None)
         return response
 
     # ── Streaming path (SSE, two-phase) ─────────────────────────────────────
     # Build the prompt once, up front — retrieval + prompt assembly finish before
     # a single token is streamed. The streaming seam falls back to llm_fn if the
     # provider has no real streaming or fails on the first chunk.
-    prompt = build_grounded_prompt(
-        payload.query, top_chunks, doc_chunks_fetcher=doc_chunks_fetcher,
-        query_type=query_type, thin_context=thin_context, answer_task=answer_task,
-    )
-    stream_fn: Callable[[str], object] | None = getattr(request.app.state, "llm_stream_fn", None)
+    with span("prompt_build") as psp:
+        prompt = build_grounded_prompt(
+            payload.query, top_chunks, doc_chunks_fetcher=doc_chunks_fetcher,
+            query_type=query_type, thin_context=thin_context, answer_task=answer_task,
+        )
+        psp.update(source_count=len(top_chunks))
+        if capture_text_enabled():
+            psp.update(prompt=prompt)
+    stream_fn: Callable[[str], object] | None = active_stream_fn
+    gen_model_name = active_gen_model_name
+
+    # Close the root's contextvar scope HERE (this coroutine's context), so its
+    # tokens reset cleanly. The generator runs in a copied context and re-adopts the
+    # root span object as parent for generate/verify. The root span stays a valid
+    # target for update()/child links after this — closing it only ends its scope.
+    root_ctx.__exit__(None, None, None)
 
     async def event_generator():
-        # PHASE 1 — stream the generation tokens.
-        full_answer = ""
-        try:
-            for token in stream_generation(prompt, stream_fn, llm_fn):
-                full_answer += token
-                yield sse_event("token", {"text": token, "done": False})
-        except GenerationError as exc:
-            # Runtime LLM failure (e.g. Gemini 429) → close the stream honestly:
-            # a terminal token then an error verification event (never a 500).
-            logger.warning("Streaming generation failed: %s", exc)
-            yield sse_event("token", {"text": "", "done": True, "full_answer": ""})
-            err = _generation_error_response(
-                payload.query, citations, "generation_failed", query_type.value
-            )
-            yield sse_event("verification", err.model_dump())
-            return
-        # The terminal token carries the authoritative assembled answer so the
-        # client never has to trust its own concatenation.
-        full_answer = full_answer.strip()
-        yield sse_event("token", {"text": "", "done": True, "full_answer": full_answer})
+        with adopt(root, root_trace_id):
+            # PHASE 1 — stream the generation tokens.
+            full_answer = ""
+            try:
+                started = time.perf_counter()
+                first = True
+                with span("generate", model=gen_model_name) as gsp:
+                    for token in stream_generation(prompt, stream_fn, llm_fn):
+                        if first:
+                            first = False
+                            gsp.update(ttft_ms=round((time.perf_counter() - started) * 1000, 1))
+                        full_answer += token
+                        yield sse_event("token", {"text": token, "done": False})
+            except GenerationError as exc:
+                # Runtime LLM failure (e.g. Gemini 429) → close the stream honestly:
+                # a terminal token then an error verification event (never a 500).
+                logger.warning("Streaming generation failed: %s", exc)
+                root.update(error="generation_failed")
+                yield sse_event("token", {"text": "", "done": True, "full_answer": ""})
+                err = _generation_error_response(
+                    payload.query, citations, "generation_failed", query_type.value
+                )
+                yield sse_event("verification", err.model_dump())
+                return
+            # The terminal token carries the authoritative assembled answer so the
+            # client never has to trust its own concatenation.
+            full_answer = full_answer.strip()
+            yield sse_event("token", {"text": "", "done": True, "full_answer": full_answer})
 
-        # PHASE 2 — verify AFTER the stream (validation + groundedness need the
-        # WHOLE answer). Emitted as one 'verification' event whose shape is
-        # identical to the stream=false JSON body, then cached.
-        response = _build_answer_response(
-            payload.query, top_chunks, citations, full_answer, verify_fn,
-            query_type.value, scope.value, answer_task,
-        )
-        _maybe_cache(response)
-        yield sse_event("verification", response.model_dump())
+            # PHASE 2 — verify AFTER the stream (validation + groundedness need the
+            # WHOLE answer). Emitted as one 'verification' event whose shape is
+            # identical to the stream=false JSON body, then cached.
+            with span("verify") as vsp:
+                response = _build_answer_response(
+                    payload.query, top_chunks, citations, full_answer, verify_fn,
+                    query_type.value, scope.value, answer_task,
+                )
+                _attach_verify_scores(vsp, response)
+            root.update(abstained=bool(response.abstained))
+            _maybe_cache(response)
+            yield sse_event("verification", response.model_dump())
 
     return StreamingResponse(event_generator(), media_type="text/event-stream")

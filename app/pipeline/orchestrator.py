@@ -41,6 +41,7 @@ import logging
 
 from app.config import get_settings
 from app.database import SessionLocal
+from app.observability import span
 from app.models.document import Document, DocumentStatus
 from app.models.chunk import ChunkRecord
 from app.models.job import EmbeddingJob, JobStatus
@@ -142,7 +143,9 @@ def _run_stages(doc: Document, db, provider=None, chroma=None, bm25=None) -> Non
     _set_status(doc, DocumentStatus.parsing, db)
 
     try:
-        raw_pages = parse(doc.file_path, doc.original_filename, doc.mime_type)
+        with span("parse") as psp:
+            raw_pages = parse(doc.file_path, doc.original_filename, doc.mime_type)
+            psp.update(pages=len(raw_pages) if raw_pages else 0)
     except Exception as exc:
         _fail(doc, f"Parse error: {exc}", db)
         return
@@ -151,7 +154,9 @@ def _run_stages(doc: Document, db, provider=None, chroma=None, bm25=None) -> Non
         _fail(doc, "No text could be extracted from the document. It may be a scanned image.", db)
         return
 
-    cleaned_pages = clean_pages(raw_pages)
+    with span("clean") as csp:
+        cleaned_pages = clean_pages(raw_pages)
+        csp.update(cleaned_pages=len(cleaned_pages) if cleaned_pages else 0)
 
     if not cleaned_pages:
         _fail(doc, "All pages were empty after cleaning.", db)
@@ -174,13 +179,15 @@ def _run_stages(doc: Document, db, provider=None, chroma=None, bm25=None) -> Non
     config_kwargs = default_chunker_config(strategy)
 
     try:
-        chunks = chunk_document(
-            pages=cleaned_pages,
-            doc_id=doc.id,
-            strategy=strategy,
-            doc_version=doc.version,   # Phase 4 amendment: tag chunks with the doc's version
-            **config_kwargs,
-        )
+        with span("chunk", strategy=strategy) as chsp:
+            chunks = chunk_document(
+                pages=cleaned_pages,
+                doc_id=doc.id,
+                strategy=strategy,
+                doc_version=doc.version,   # Phase 4 amendment: tag chunks with the doc's version
+                **config_kwargs,
+            )
+            chsp.update(chunks=len(chunks) if chunks else 0)
     except Exception as exc:
         _fail(doc, f"Chunk error: {exc}", db)
         return
@@ -258,7 +265,16 @@ def _run_embed_and_finish(doc: Document, db, provider=None, chroma=None, bm25=No
         # No embedding backend available (e.g. worker didn't load a model / tests).
         logger.warning("No embedding provider — skipping embed stage for doc=%s", doc.id)
     else:
-        job = _embed_stage(doc, db, provider, chroma, bm25)
+        with span("embed") as esp:
+            job = _embed_stage(doc, db, provider, chroma, bm25)
+            # chunk count + batch count (the spec's embed fields). Chroma upsert is
+            # fused into the embed sink, so batches derive from the configured size.
+            batch_size = get_settings().embed_batch_size or 1
+            chunk_count = doc.chunk_count or 0
+            esp.update(
+                chunk_count=chunk_count,
+                batch_count=(chunk_count + batch_size - 1) // batch_size,
+            )
         if job is not None and job.status == JobStatus.failed:
             _fail(doc, "Embedding failed for all chunks.", db)
             return
@@ -269,9 +285,10 @@ def _run_embed_and_finish(doc: Document, db, provider=None, chroma=None, bm25=No
     # client is available the embed stage uses _noop_sink and nothing is stored.
 
     # Mark ready (also for completed_with_failures — partial success is still usable).
-    doc.status = DocumentStatus.ready
-    doc.error_message = None
-    db.commit()
+    with span("store"):
+        doc.status = DocumentStatus.ready
+        doc.error_message = None
+        db.commit()
     logger.info("Pipeline complete for doc_id=%s", doc.id)
 
 

@@ -12,6 +12,7 @@ from app.models.document import Document, DocumentStatus
 from app.schemas.document import DocumentListResponse, DocumentResponse, DeleteResponse
 from app.core.dependencies import get_current_user, get_current_user_optional as _optional_current_user, get_chroma, get_arq_pool
 from app.pipeline.orchestrator import run_pipeline
+from app.observability import new_trace_id
 from app.config import get_settings
 
 router = APIRouter(prefix="/docs", tags=["documents"])
@@ -154,8 +155,14 @@ async def upload_document(
             logger.warning("No arq pool available — running pipeline inline for doc=%s", doc.id)
         background_tasks.add_task(run_pipeline, doc.id)
     else:
-        await arq_pool.enqueue_job("run_pipeline", doc.id)
-        logger.info("Enqueued run_pipeline for doc=%s", doc.id)
+        # Cross-process trace propagation (Phase 9A): the worker shares no memory
+        # with the API, so the contextvar stack does not cross. We hand the worker a
+        # trace_id (a primitive, alongside doc_id) in the job kwargs; it starts
+        # "ingest.document" under it. Payload stays primitive-only (it is pickled),
+        # so idempotency / checkpoint-resume are untouched.
+        trace_id = new_trace_id()
+        await arq_pool.enqueue_job("run_pipeline", doc.id, trace_id=trace_id)
+        logger.info("Enqueued run_pipeline for doc=%s trace=%s", doc.id, trace_id)
 
     return doc
 

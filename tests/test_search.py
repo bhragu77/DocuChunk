@@ -813,3 +813,59 @@ def test_generate_answer_endpoint_passes_llm_fn_through_to_both(endpoint_client,
     # exact object identity: the endpoint forwarded app.state.llm_fn to both, not a fallback
     assert seen["generate"] is sentinel
     assert seen["groundedness"] is sentinel
+
+
+# ── Verifier false-positive regressions (found by the neural eval run) ────────
+
+def test_groundedness_ignores_verifier_lines_that_affirm_support():
+    """A verifier asked for a LIST often answers in prose whose bullets AFFIRM support
+    ("The claim that X is supported by the source, but ..."). Counting such a line as
+    an unsupported claim inverts its meaning and collapsed a correct one-line answer
+    to confidence 0.0. This is the verbatim response captured from the live run."""
+    raw = (
+        'Unsupported claims:\n'
+        '- The claim that the GX-4200 is an "outdoor sensor unit" is supported by the '
+        'source, but the citation "[1, 2]" is inaccurate because the source excerpts '
+        'do not use a numbering system.\n'
+        '- The claim that the firmware version is supported'
+    )
+    source = _source_chunk("The recommended firmware for the GX-4200 is version 4.0.2.")
+    result = groundedness_check(
+        query="what firmware version is recommended for the GX-4200",
+        answer_draft="The recommended firmware version for the GX-4200 is 4.0.2 [1, 2].",
+        source_chunks=[source],
+        llm_fn=lambda p: raw,
+    )
+    assert result["grounded"] is True
+    assert result["confidence"] > 0.0
+    assert result["unsupported_claims"] == []
+
+
+def test_groundedness_still_catches_a_real_unsupported_claim():
+    """The affirm-skip must not swallow genuine findings."""
+    source = _source_chunk("The recommended firmware for the GX-4200 is version 4.0.2.")
+    result = groundedness_check(
+        query="what does the GX-4200 cost",
+        answer_draft="The GX-4200 costs 500 dollars.",
+        source_chunks=[source],
+        llm_fn=lambda p: (
+            "Unsupported claims:\n- The claim that the GX-4200 costs 500 dollars is "
+            "not supported by the sources."
+        ),
+    )
+    assert result["grounded"] is False
+    assert result["unsupported_claims"]
+
+
+def test_verification_prompt_numbers_sources_like_the_answer_cites_them():
+    """The answer cites [1], [2]; if the verifier sees an unnumbered blob it reports
+    the CITATION as an unsupported claim. The excerpts must carry the same numbering."""
+    seen = {}
+    chunks = [_source_chunk("First source text."), _source_chunk("Second source text.")]
+    groundedness_check(
+        query="q", answer_draft="An answer [1].", source_chunks=chunks,
+        llm_fn=lambda p: seen.setdefault("prompt", p) and "none",
+    )
+    prompt = seen["prompt"]
+    assert "[1] First source text." in prompt
+    assert "[2] Second source text." in prompt

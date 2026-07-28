@@ -34,6 +34,7 @@ from dataclasses import dataclass, field
 from typing import Callable
 
 from app.generation.prompt_builder import build_grounded_prompt
+from app.observability import capture_text_enabled, span
 
 logger = logging.getLogger(__name__)
 
@@ -137,20 +138,23 @@ def hybrid_search(
 
     # ── 1. Dense retrieval ────────────────────────────────────────────────────
     try:
-        query_vec = embed_fn(query)
-        coll = chroma_client.get_collection(collection_name)
-        where = {"doc_id": doc_id} if doc_id else None
-        raw = coll.query(
-            query_embeddings=[query_vec],
-            n_results=min(top_n, 100),
-            where=where,
-            include=["documents", "metadatas", "distances"],
-        )
-        for rank, (cid, text, meta) in enumerate(
-            zip(raw["ids"][0], raw["documents"][0], raw["metadatas"][0]), 1
-        ):
-            chunk_data[cid] = {"text": text, "meta": meta or {}, "dense_rank": rank}
-            dense_count += 1
+        with span("embed_query"):
+            query_vec = embed_fn(query)
+        with span("vector_search", n_results=min(top_n, 100)) as vs:
+            coll = chroma_client.get_collection(collection_name)
+            where = {"doc_id": doc_id} if doc_id else None
+            raw = coll.query(
+                query_embeddings=[query_vec],
+                n_results=min(top_n, 100),
+                where=where,
+                include=["documents", "metadatas", "distances"],
+            )
+            for rank, (cid, text, meta) in enumerate(
+                zip(raw["ids"][0], raw["documents"][0], raw["metadatas"][0]), 1
+            ):
+                chunk_data[cid] = {"text": text, "meta": meta or {}, "dense_rank": rank}
+                dense_count += 1
+            vs.update(returned=dense_count)
     except Exception as exc:
         logger.warning("Dense retrieval failed for user=%s: %s", user_id, exc)
 
@@ -159,7 +163,9 @@ def hybrid_search(
     try:
         # user_id scopes BM25 to the owner's corpus, mirroring the per-user Chroma
         # collection — the lexical index must never score across other users' chunks.
-        bm25_results = bm25_index.query(query, user_id=user_id, doc_id=doc_id, top_n=top_n)
+        with span("bm25_search") as bs:
+            bm25_results = bm25_index.query(query, user_id=user_id, doc_id=doc_id, top_n=top_n)
+            bs.update(returned=len(bm25_results))
     except Exception as exc:
         logger.warning("BM25 retrieval failed: %s", exc)
 
@@ -181,16 +187,18 @@ def hybrid_search(
             chunk_data[cid]["bm25_rank"] = rank
 
     # ── 3. RRF fusion ─────────────────────────────────────────────────────────
-    rrf: dict[str, float] = {}
-    for cid, data in chunk_data.items():
-        score = 0.0
-        if "dense_rank" in data:
-            score += 1.0 / (RRF_K + data["dense_rank"])
-        if "bm25_rank" in data:
-            score += 1.0 / (RRF_K + data["bm25_rank"])
-        rrf[cid] = score
+    with span("rrf_fuse", rrf_k=RRF_K) as fs:
+        rrf: dict[str, float] = {}
+        for cid, data in chunk_data.items():
+            score = 0.0
+            if "dense_rank" in data:
+                score += 1.0 / (RRF_K + data["dense_rank"])
+            if "bm25_rank" in data:
+                score += 1.0 / (RRF_K + data["bm25_rank"])
+            rrf[cid] = score
 
-    top_ids = sorted(rrf, key=lambda x: rrf[x], reverse=True)[:top_n]
+        top_ids = sorted(rrf, key=lambda x: rrf[x], reverse=True)[:top_n]
+        fs.update(fused=len(top_ids))
 
     results: list[ScoredChunk] = []
     for cid in top_ids:
@@ -312,21 +320,24 @@ def rerank(
     if not candidates:
         return []
 
-    model = reranker if reranker is not None else _get_cross_encoder()
-    pairs = [(query, c.text) for c in candidates]
+    with span("rerank", model=_RERANKER_MODEL, candidates_in=len(candidates)) as rsp:
+        model = reranker if reranker is not None else _get_cross_encoder()
+        pairs = [(query, c.text) for c in candidates]
 
-    try:
-        raw_scores = model.predict(pairs)
-    except Exception as exc:
-        logger.error("Cross-encoder prediction failed (%s) — returning hybrid order", exc)
-        return candidates[:top_k]
+        try:
+            raw_scores = model.predict(pairs)
+        except Exception as exc:
+            logger.error("Cross-encoder prediction failed (%s) — returning hybrid order", exc)
+            rsp.update(kept_out=min(top_k, len(candidates)), reranked=False)
+            return candidates[:top_k]
 
-    for chunk, score in zip(candidates, raw_scores):
-        chunk.reranker_score = float(score)
+        for chunk, score in zip(candidates, raw_scores):
+            chunk.reranker_score = float(score)
 
-    ranked = sorted(candidates, key=lambda c: c.reranker_score, reverse=True)  # type: ignore[arg-type]
-    logger.info("rerank: %d → top %d", len(candidates), min(top_k, len(ranked)))
-    return ranked[:top_k]
+        ranked = sorted(candidates, key=lambda c: c.reranker_score, reverse=True)  # type: ignore[arg-type]
+        logger.info("rerank: %d → top %d", len(candidates), min(top_k, len(ranked)))
+        rsp.update(kept_out=min(top_k, len(ranked)))
+        return ranked[:top_k]
 
 
 # ── LLM helpers (shared by generate + groundedness) ──────────────────────────
@@ -349,6 +360,7 @@ def generate_answer(
     query_type=None,
     thin_context: bool = False,
     answer_task=None,
+    model_name: str | None = None,
 ) -> str:
     """
     Generate an answer grounded in source_chunks.  Used by /generate/answer.
@@ -372,11 +384,23 @@ def generate_answer(
     # specifies the [n] citation format, and gives the model an abstention clause.
     # The old bare "Context:\n...---..." blob (no labels, no format, no escape hatch)
     # is gone — parsing/abstention now happen on the response (see citation_parser).
-    prompt = build_grounded_prompt(
-        query, source_chunks, doc_chunks_fetcher=doc_chunks_fetcher,
-        query_type=query_type, thin_context=thin_context, answer_task=answer_task,
-    )
-    return llm_fn(prompt).strip()
+    #
+    # Phase 9A: prompt_build and generate are emitted as sibling spans (children of
+    # whatever span is active — rag.request when called from /generate/answer). The
+    # split is instrumentation only; the generation behaviour is unchanged.
+    with span("prompt_build") as psp:
+        prompt = build_grounded_prompt(
+            query, source_chunks, doc_chunks_fetcher=doc_chunks_fetcher,
+            query_type=query_type, thin_context=thin_context, answer_task=answer_task,
+        )
+        psp.update(source_count=len(source_chunks))
+        if capture_text_enabled():
+            psp.update(prompt=prompt)
+    with span("generate", model=model_name):
+        # Token usage / ttft / finish_reason come from the provider usage field in
+        # Phase 9B — the str-returning llm_fn seam does not surface them here, and a
+        # tiktoken estimate is deliberately NOT substituted.
+        return llm_fn(prompt).strip()
 
 
 # ── Groundedness check ────────────────────────────────────────────────────────
@@ -434,7 +458,21 @@ def groundedness_check(
     # reasonable inference. Every OTHER task keeps the original strict prompt
     # verbatim (default None → unchanged behavior).
     is_infer = getattr(answer_task, "value", answer_task) == "infer"
-    context = "\n---\n".join(c.text for c in source_chunks[:8])
+    # NUMBER the excerpts exactly as the generation prompt numbered them ("[n]").
+    # The answer cites its sources as [1], [2], … — if the verifier is shown an
+    # unnumbered blob it has no referent for those markers and reports the CITATION
+    # as an unsupported claim ("the citation [1, 2] is inaccurate because the source
+    # excerpts do not use a numbering system"). That turned correct, fully grounded
+    # one-line answers into confidence=0.0. Measured on the 45-query fixture: it was
+    # the dominant cause of a 33% false "hallucination" rate.
+    context = "\n---\n".join(
+        f"[{n}] {c.text}" for n, c in enumerate(source_chunks[:8], 1)
+    )
+    _citation_note = (
+        "The answer cites sources with bracketed markers like [1] or [1, 2]; those "
+        "markers refer to the numbered excerpts above. Judge only the factual claims "
+        "— never treat a citation marker itself as a claim.\n"
+    )
     if is_infer:
         prompt = (
             "You are a fact-checking assistant evaluating a REASONING answer.\n\n"
@@ -442,6 +480,7 @@ def groundedness_check(
             f"{context}\n\n"
             f"Query: {query}\n\n"
             f"Answer to verify:\n{answer_draft}\n\n"
+            f"{_citation_note}"
             "The answer may draw REASONABLE INFERENCES from the sources — those are "
             "acceptable. List only claims that introduce NEW FACTS or ENTITIES that "
             "are neither stated in nor reasonably inferable from the sources. If there "
@@ -455,6 +494,7 @@ def groundedness_check(
             f"{context}\n\n"
             f"Query: {query}\n\n"
             f"Answer to verify:\n{answer_draft}\n\n"
+            f"{_citation_note}"
             "List every claim in the answer that is NOT directly supported by the source "
             "excerpts above.  If all claims are supported, write exactly: none\n"
             "Unsupported claims:"
@@ -499,6 +539,19 @@ def groundedness_check(
     _META = ("no unsupported", "all supported", "fully supported", "all claims are supported",
              "everything is supported", "unsupported claims", "here are", "the following",
              "no claims")
+    # A verifier asked for a LIST often answers in prose, and its bullets frequently
+    # AFFIRM support ("The claim that X is supported by the source, but …"). Counting
+    # such a line as an unsupported claim inverts its meaning and collapses confidence
+    # on a correct answer. A line that says a claim IS supported — and does not also
+    # negate it — is not a finding against the answer.
+    _AFFIRMS = ("is supported", "are supported", "is directly supported",
+                "is fully supported", "supported by the source")
+    _NEGATIONS = ("not supported", "not directly supported", "isn't supported",
+                  "is not", "no support", "unsupported")
+
+    def _affirms_support(text: str) -> bool:
+        return any(a in text for a in _AFFIRMS) and not any(n in text for n in _NEGATIONS)
+
     unsupported: list[str] = []
     for line in response.split("\n"):
         clean = line.strip().lstrip("-•*0123456789.) ").strip()
@@ -506,6 +559,8 @@ def groundedness_check(
         if not clean or len(clean) <= 8:
             continue
         if cl == "none" or any(m in cl for m in _META):
+            continue
+        if _affirms_support(cl):
             continue
         unsupported.append(clean)
 
