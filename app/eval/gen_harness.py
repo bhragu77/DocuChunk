@@ -448,7 +448,14 @@ def evaluate_gen_query(
         expected_doc_id=q["expected_doc_id"],
         answer=answer,
         reference=reference,
-        contexts=[(getattr(c, "text", "") or "")[:300] for c in chunks],
+        # FULL chunk text, not a preview. This field is the RAGAS export (see
+        # ragas_compat.to_ragas_dataset): RAGAS re-judges faithfulness and
+        # context-recall against exactly these strings. Clipping them to 300 chars
+        # hid the supporting sentence whenever it sat past the cap, so RAGAS
+        # correctly scored the claim unsupported and the cross-check reported a
+        # ~0.45 gap that was an artifact of the export, not a metric disagreement.
+        # Measured: 149 of 225 exported contexts were hitting the cap.
+        contexts=[(getattr(c, "text", "") or "") for c in chunks],
         abstained=_abstained(answer),
         num_retrieved=len(retrieved_ids),
         num_relevant_retrieved=len(relevant),
