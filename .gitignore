@@ -38,3 +38,6 @@ htmlcov/
 # OS
 .DS_Store
 Thumbs.db
+
+# RAGAS cross-check virtualenv (scripts/ragas_crosscheck.py) — not a project dep
+.ragas-venv/

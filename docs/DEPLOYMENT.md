@@ -190,6 +190,32 @@ https://console.cloud.google.com → APIs & Services → Credentials → your OA
 
 ---
 
+## 8b. Optional: the "offline" chat model (Ollama)
+
+The chat model picker offers a second tier — **"offline"**, a small local LLM
+(`qwen2.5:1.5b`, ~1 GB) served by Ollama — alongside Gemini. It's **opt-in**: the
+`ollama` service only starts under the `offline` profile, and the app probes it at
+startup, showing the "offline" option **only when it answers**. If you don't start
+it, the picker just shows Gemini — nothing breaks.
+
+```bash
+# start the app stack AND ollama:
+docker compose -f docker-compose.yml -f docker-compose.prod.yml --profile offline up -d --build
+# pull the model once (~1 GB, into the ollama_models volume):
+docker compose --profile offline exec ollama ollama pull qwen2.5:1.5b
+```
+
+- **RAM:** budget **~2 GB extra** while it generates. Fine on the 12 GB Ampere VM;
+  on 2 ARM cores the offline answers are **correct but slower** than Gemini — that's
+  expected, and it's the point of offering the user a choice.
+- Leave `OFFLINE_ENABLED=true` in `.env` (the app hides the tier automatically when
+  Ollama isn't running, so it's safe to keep on).
+- **Do NOT** co-locate the full self-host **Langfuse** stack on this same 12 GB VM
+  as well (Langfuse alone wants ~8 GB) — point `LANGFUSE_HOST` at Langfuse Cloud or
+  run it separately.
+
+---
+
 ## 9. Operations
 
 ### Update after a code change

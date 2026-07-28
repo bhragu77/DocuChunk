@@ -15,6 +15,8 @@ from app.routers.auth import router as auth_router
 from app.routers.documents import router as docs_router
 from app.routers.pages import router as pages_router
 from app.routers.search import search_router, generate_router
+from app.routers.agent import agent_router
+from app.routers.pipeline import pipeline_router
 from app.routers.chat import router as chat_router
 from app.routers.eval import router as eval_router
 from app.routers.analysis import router as analysis_router
@@ -89,12 +91,19 @@ async def lifespan(app: FastAPI):
     # model than the generator. When VERIFY_PROVIDER is unset, it reuses the
     # generation provider (backward compatible). None when generation is unconfigured.
     app.state.verify_fn = None
+    # Phase 9A — the model names the "generate"/rerank spans record. Kept as plain
+    # strings on app.state (the llm_fn seam returns only text, hiding the provider),
+    # so the endpoint can label spans without reaching into the provider.
+    app.state.gen_model_name = None
+    app.state.verify_model_name = None
     try:
         _gen_provider = build_gen_provider(settings)
         app.state.llm_fn = make_llm_fn(_gen_provider, settings)
         app.state.llm_stream_fn = make_llm_stream_fn(_gen_provider, settings)
         _verify_provider = build_verify_provider(settings, gen_provider=_gen_provider)
         app.state.verify_fn = make_verify_fn(_verify_provider, settings)
+        app.state.gen_model_name = _gen_provider.model_name
+        app.state.verify_model_name = _verify_provider.model_name
         logger.info(
             "Generation wired [gen=%s/%s verify=%s/%s stream=%s]",
             _gen_provider.provider_name, _gen_provider.model_name,
@@ -106,6 +115,23 @@ async def lifespan(app: FastAPI):
             "Generation provider unavailable (%s) — /generate/answer will return "
             "generation_not_configured until GEN_PROVIDER is set with a valid key.", exc,
         )
+
+    # Chat model picker — the per-request "gemini" | "offline" generation registry
+    # (independent of the default seam above). Built best-effort; empty when neither
+    # tier is configured, in which case /generate/answer just uses the default llm_fn.
+    # Exposed to the UI via GET /generate/models so the picker can hide unavailable
+    # tiers instead of erroring.
+    app.state.gen_registry = {}
+    try:
+        from app.generation.factory import build_gen_registry
+        app.state.gen_registry = build_gen_registry(settings)
+        if app.state.gen_registry:
+            logger.info(
+                "Chat model picker wired [%s]",
+                ", ".join(f"{k}={v['model_name']}" for k, v in app.state.gen_registry.items()),
+            )
+    except Exception as exc:
+        logger.warning("Chat model registry unavailable (%s) — picker falls back to default.", exc)
 
     # Story 7 — the ANSWER CACHE. Skips the whole chain for a repeated
     # (user, doc, doc_version, query). None when CACHE_BACKEND=none (the default).
@@ -132,6 +158,10 @@ async def lifespan(app: FastAPI):
 
     # ── Shutdown ──────────────────────────────────────────────────────────────
     logger.info("Shutting down %s", settings.app_name)
+    # Flush any buffered trace data (no-op tracer in Phase 9A; the real backend in
+    # 9B blocks here to drain its queue). Fail-open — never blocks shutdown on error.
+    from app.observability import flush as flush_traces
+    flush_traces()
     if getattr(app.state, "arq_pool", None) is not None:
         await app.state.arq_pool.close()
 
@@ -169,6 +199,8 @@ def create_app() -> FastAPI:
     app.include_router(docs_router)
     app.include_router(search_router)    # Phase 8: POST /search/semantic
     app.include_router(generate_router)  # Phase 8: POST /generate/answer
+    app.include_router(agent_router)     # Agentic RAG: POST /generate/agent (ReAct multi-hop)
+    app.include_router(pipeline_router)  # Pipeline dashboard: record-then-replay trace artifacts
     app.include_router(chat_router)      # Chat sessions: /chat/sessions (per-user history + lock)
     app.include_router(eval_router)      # Admin-gated: GET /eval/run (dense-only baseline)
     app.include_router(analysis_router)  # Chunk analyser, embedding inspection, UMAP viz

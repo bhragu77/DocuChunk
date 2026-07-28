@@ -20,6 +20,16 @@ services:
       - DATABASE_URL=sqlite:////app/data/app.db
       - REDIS_HOST=redis
       - REDIS_PORT=6379
+      # Chat model picker — the "offline" tier (a local Ollama LLM). Left ENABLED so
+      # the tier lights up automatically WHEN the ollama service is running (start it
+      # with `--profile offline`). If Ollama isn't up, the app probes it at startup,
+      # finds it unreachable, and simply hides "offline" from the picker — no error.
+      - OFFLINE_ENABLED=true
+      - OFFLINE_BASE_URL=http://ollama:11434/v1
+      - OFFLINE_MODEL=qwen2.5:1.5b
+      # Local CPU inference is far slower than the cloud tier — the agent planner
+      # alone needs ~20s+ per step, so it gets its own generous timeout.
+      - OFFLINE_TIMEOUT_S=180
     volumes:
       - uploads_data:/app/uploads
       - chroma_data:/app/chroma_db
@@ -71,12 +81,152 @@ services:
       - chroma_data:/data
     restart: unless-stopped
 
+  # ════════════════════════════════════════════════════════════════════════════
+  # OFFLINE LLM (Ollama) — powers the chat model picker's "offline" tier. OPT-IN.
+  #   Start:  docker compose --profile offline up -d
+  #   Default `docker compose up` (no profile) does NOT start it; the app then just
+  #   hides the "offline" option (it probes Ollama at startup and finds it absent).
+  #
+  # First run pulls the model (~1 GB) into the ollama_models volume — do it once:
+  #   docker compose --profile offline exec ollama ollama pull qwen2.5:1.5b
+  # Budget ~2 GB RAM while generating; CPU-only works (slower). ARM64 images exist,
+  # so this runs on the free Oracle Ampere deploy VM too.
+  # ════════════════════════════════════════════════════════════════════════════
+  ollama:
+    image: ollama/ollama:latest
+    profiles: ["offline"]
+    # Not published to the host — only the app/worker reach it over the compose
+    # network at ollama:11434 (matches OFFLINE_BASE_URL on the app service).
+    volumes:
+      - ollama_models:/root/.ollama
+    restart: unless-stopped
+
   redis:
     image: redis:7-alpine
     # Not published to the host — only the app and worker reach it over the
     # internal compose network. (Avoids clashing with any host-side redis on 6379.)
+    # This is the arq + answer-cache Redis (DB 0). Langfuse uses its OWN Redis
+    # instance below (langfuse-redis) — never this one.
     volumes:
       - redis_data:/data
+    restart: unless-stopped
+
+  # ════════════════════════════════════════════════════════════════════════════
+  # OBSERVABILITY STACK (Langfuse self-host) — OPT-IN, OFF BY DEFAULT.
+  #   Start:  docker compose --profile observability up -d
+  #   Default `docker compose up` (no profile) starts NONE of the services below.
+  #
+  # HEAVY: budget roughly 4 CPU / 8 GB RAM. The stack is the full Langfuse v3
+  # deployment and includes ClickHouse (columnar store for trace/observation
+  # analytics — the waterfalls, cost rollups, and score charts are queried from it)
+  # and MinIO (S3-compatible blob store for large ingestion/event payloads).
+  #
+  # Set LANGFUSE_HOST=http://localhost:3000 and the project keys in .env, then set
+  # TRACING_ENABLED=true, to point the app at this stack instead of Langfuse Cloud.
+  # ════════════════════════════════════════════════════════════════════════════
+  langfuse-web:
+    image: langfuse/langfuse:3
+    profiles: ["observability"]
+    depends_on:
+      - langfuse-db
+      - langfuse-clickhouse
+      - langfuse-redis
+      - langfuse-minio
+    ports:
+      - "3000:3000"
+    environment:
+      - DATABASE_URL=postgresql://langfuse:langfuse@langfuse-db:5432/langfuse
+      - CLICKHOUSE_URL=http://langfuse-clickhouse:8123
+      - CLICKHOUSE_MIGRATION_URL=clickhouse://langfuse-clickhouse:9000
+      - CLICKHOUSE_USER=default
+      - CLICKHOUSE_PASSWORD=langfuse
+      - CLICKHOUSE_CLUSTER_ENABLED=false
+      # Langfuse's OWN Redis instance / DB — isolated from the app's arq + cache Redis.
+      - REDIS_CONNECTION_STRING=redis://langfuse-redis:6379/0
+      - LANGFUSE_S3_EVENT_UPLOAD_BUCKET=langfuse
+      - LANGFUSE_S3_EVENT_UPLOAD_ENDPOINT=http://langfuse-minio:9000
+      - LANGFUSE_S3_EVENT_UPLOAD_ACCESS_KEY_ID=minio
+      - LANGFUSE_S3_EVENT_UPLOAD_SECRET_ACCESS_KEY=miniosecret
+      - LANGFUSE_S3_EVENT_UPLOAD_FORCE_PATH_STYLE=true
+      - LANGFUSE_S3_EVENT_UPLOAD_REGION=auto
+      # CHANGE THESE for anything beyond a local demo.
+      - SALT=change-me-langfuse-salt
+      - ENCRYPTION_KEY=0000000000000000000000000000000000000000000000000000000000000000
+      - NEXTAUTH_SECRET=change-me-nextauth-secret
+      - NEXTAUTH_URL=http://localhost:3000
+    restart: unless-stopped
+
+  langfuse-worker:
+    image: langfuse/langfuse-worker:3
+    profiles: ["observability"]
+    depends_on:
+      - langfuse-db
+      - langfuse-clickhouse
+      - langfuse-redis
+      - langfuse-minio
+    environment:
+      - DATABASE_URL=postgresql://langfuse:langfuse@langfuse-db:5432/langfuse
+      - CLICKHOUSE_URL=http://langfuse-clickhouse:8123
+      - CLICKHOUSE_MIGRATION_URL=clickhouse://langfuse-clickhouse:9000
+      - CLICKHOUSE_USER=default
+      - CLICKHOUSE_PASSWORD=langfuse
+      - CLICKHOUSE_CLUSTER_ENABLED=false
+      - REDIS_CONNECTION_STRING=redis://langfuse-redis:6379/0
+      - LANGFUSE_S3_EVENT_UPLOAD_BUCKET=langfuse
+      - LANGFUSE_S3_EVENT_UPLOAD_ENDPOINT=http://langfuse-minio:9000
+      - LANGFUSE_S3_EVENT_UPLOAD_ACCESS_KEY_ID=minio
+      - LANGFUSE_S3_EVENT_UPLOAD_SECRET_ACCESS_KEY=miniosecret
+      - LANGFUSE_S3_EVENT_UPLOAD_FORCE_PATH_STYLE=true
+      - LANGFUSE_S3_EVENT_UPLOAD_REGION=auto
+      - SALT=change-me-langfuse-salt
+      - ENCRYPTION_KEY=0000000000000000000000000000000000000000000000000000000000000000
+    restart: unless-stopped
+
+  # Postgres — Langfuse's transactional store (projects, users, prompts, scores
+  # config). Separate from the app's SQLite/Postgres.
+  langfuse-db:
+    image: postgres:16-alpine
+    profiles: ["observability"]
+    environment:
+      - POSTGRES_USER=langfuse
+      - POSTGRES_PASSWORD=langfuse
+      - POSTGRES_DB=langfuse
+    volumes:
+      - langfuse_pg:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  # ClickHouse — the analytical engine. Traces/observations/scores are written here
+  # for fast aggregation (per-span latency waterfalls, cost per user per day, score
+  # trends). Row stores can't serve those group-bys at trace volume; ClickHouse can.
+  langfuse-clickhouse:
+    image: clickhouse/clickhouse-server:24.3
+    profiles: ["observability"]
+    environment:
+      - CLICKHOUSE_USER=default
+      - CLICKHOUSE_PASSWORD=langfuse
+    volumes:
+      - langfuse_clickhouse_data:/var/lib/clickhouse
+      - langfuse_clickhouse_logs:/var/log/clickhouse-server
+    restart: unless-stopped
+
+  # Langfuse's OWN Redis — a SEPARATE instance from the app's `redis` service, so
+  # trace-ingestion queue load can never evict answer-cache keys or arq jobs.
+  langfuse-redis:
+    image: redis:7-alpine
+    profiles: ["observability"]
+    restart: unless-stopped
+
+  # MinIO — S3-compatible blob store Langfuse uses to stage large ingestion event
+  # batches and any media payloads before ClickHouse ingest.
+  langfuse-minio:
+    image: minio/minio:latest
+    profiles: ["observability"]
+    command: server /data --console-address ":9001"
+    environment:
+      - MINIO_ROOT_USER=minio
+      - MINIO_ROOT_PASSWORD=miniosecret
+    volumes:
+      - langfuse_minio:/data
     restart: unless-stopped
 
 volumes:
@@ -84,3 +234,9 @@ volumes:
   chroma_data:
   sqlite_data:
   redis_data:
+  ollama_models:      # cached offline LLM weights (~1 GB) — survives restarts
+  # observability-profile volumes (only created when the profile is used)
+  langfuse_pg:
+  langfuse_clickhouse_data:
+  langfuse_clickhouse_logs:
+  langfuse_minio:

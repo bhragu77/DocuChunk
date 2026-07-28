@@ -61,6 +61,12 @@ matplotlib>=3.9.0
 arq>=0.25.0
 redis>=5.0.0
 
+# Observability / LLMOps tracing (Phase 9B). OPTIONAL at runtime: the tracing seam
+# imports it lazily and falls back to a no-op tracer if it is absent or unconfigured,
+# so the app runs fine without it. Pin to v2 — the LangfuseTracer targets the v2 API
+# (all version-specific calls isolated in _start_span/_end_span).
+langfuse>=2.0,<3
+
 # Templates
 jinja2>=3.1.0
 
