@@ -669,9 +669,18 @@ def format_comparison(report: dict) -> str:
     # ── How to read this ──
     L.append("## How to read this")
     L.append("")
-    L.append("- **recall@k is already 1.0 for every mode** — on this fixture the correct chunk is "
-             "always *somewhere* in the top k. The signal is therefore **MRR** (how high the correct "
-             "chunk ranks), not recall.")
+    # Written from the run's own numbers: on the original 10-doc corpus recall@k was
+    # 1.0 for every mode and only MRR carried signal. With the distractor documents
+    # added, dense-only genuinely misses queries, so recall separates the modes too —
+    # hardcoding either claim would make this artifact lie about its own table.
+    _recalls = [modes[mk]["aggregate"]["recall_at_k"] for mk, _ in order if mk in modes]
+    if _recalls and min(_recalls) >= 0.999:
+        L.append("- **recall@k is 1.0 for every mode on this fixture** — the correct chunk is always "
+                 "*somewhere* in the top k, so the signal is **MRR** (how high it ranks), not recall.")
+    else:
+        L.append(f"- **recall@k separates the modes here** (lowest {min(_recalls):.3f}, highest "
+                 f"{max(_recalls):.3f}): with near-duplicate distractors in the corpus, weaker "
+                 "retrieval misses the correct chunk outright. Read **both** recall@k and MRR.")
     L.append("- **Dense-only is weakest on `identifier` queries** (exact part numbers / phone numbers): "
              "a neural embedding blurs `88-AZ-0097`-style tokens, so the right chunk lands mid-list.")
     L.append("- **Hybrid (dense + BM25 via RRF) lifts those rows** — BM25 matches the exact token, and "

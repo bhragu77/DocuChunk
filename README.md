@@ -1,8 +1,49 @@
 # DocuChunk
 
-Production-grade document retrieval & RAG platform: upload PDFs/DOCX → parse →
-chunk → embed → hybrid retrieval → grounded generation with citation validation
-and a confidence breakdown.
+A document question-answering system built to production shape: upload PDFs/DOCX →
+parse → chunk → embed → **hybrid retrieval** (dense + BM25 + RRF, cross-encoder
+rerank) → **agentic multi-hop planning** → **grounded generation** with citation
+validation, abstention and a confidence breakdown — all of it **traced, cost-metered
+and continuously evaluated**.
+
+> Runs on SQLite + a single-node Chroma by default, which is honest about its scale
+> today: this is a single-node system with a real evaluation and observability story,
+> not a distributed one. Postgres/pgvector is the documented next step.
+
+## Measured results
+
+Every number below is produced by a harness in this repo and committed as an
+artifact — none of it is asserted.
+
+| | result | artifact |
+|---|---|---|
+| Generation quality (real LLM generating **and** judging, 45 queries) | faithfulness **0.888** · answer-relevancy **1.000** · answer-correctness **0.978** | [`eval/GEN_BASELINE.md`](eval/GEN_BASELINE.md) |
+| Retrieval, three modes head-to-head (42 docs, near-duplicate distractors) | MRR dense **0.777** → hybrid **0.883** → +rerank **0.967** | [`eval/phase8_comparison.md`](eval/phase8_comparison.md) |
+| Agent vs single-shot RAG | **+0.431** context-recall at k=1 on multi-hop, decaying to 0 by k=5 | [`eval/AGENT_BASELINE.md`](eval/AGENT_BASELINE.md) |
+| Latency | per-stage p50/p95 from real recorded runs | [`eval/LATENCY.md`](eval/LATENCY.md) |
+| RAGAS cross-check | **does not validate yet** — see the file for why | [`eval/RAGAS_CROSSCHECK.md`](eval/RAGAS_CROSSCHECK.md) |
+
+**The agent result is the interesting one.** Planned retrieval buys coverage, and
+coverage is only worth its extra LLM calls when the retrieval budget is scarce — at
+k=5 on this corpus a single pass already finds everything, so the agent costs
+precision for nothing. The crossover is the finding: it says *when* to route a query
+to the agent instead of RAG.
+
+## What's inside
+
+| Capability | Where |
+|---|---|
+| Hybrid retrieval + reranking | `app/pipeline/retrieval.py`, `app/pipeline/bm25_index.py` |
+| ReAct agent loop (hand-rolled; LangGraph-equivalent router/tool/state nodes, no framework lock-in) | `app/generation/agent/` |
+| LLMOps — tracing, token + ₹ cost attribution, prompt versioning (Langfuse) | `app/observability/` |
+| Evaluation — retrieval, generation, agent-vs-RAG, failure taxonomy | `app/eval/` |
+| CI regression gate (hermetic — no API key needed) | `.github/workflows/eval.yml` |
+| Pipeline dashboard — record-then-replay trace artifacts | `app/routers/pipeline.py`, `/pipeline` |
+
+Evaluation runs in two profiles: a deterministic **surrogate** (no API, no torch)
+that CI gates on, and a **neural** profile driven by a real model for the definitive
+numbers. The failure taxonomy assigns each query exactly one class that names the
+fix, so a regression points at the thing to change.
 
 ## Configuration (generation)
 

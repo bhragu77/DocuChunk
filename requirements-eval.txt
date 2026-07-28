@@ -1,0 +1,22 @@
+# Evaluation extras — NOT required to run the app.
+#
+# These power the offline evaluation work: the RAGAS cross-check that validates our
+# metric implementations against the reference library (scripts/ragas_crosscheck.py).
+#
+# They are deliberately kept OUT of requirements.txt for two reasons:
+#   1. The hermetic CI gate (.github/workflows/eval.yml) must run with no API keys
+#      and no heavyweight ML stack; adding these would slow and complicate it.
+#   2. RAGAS pulls a LangChain stack whose pins conflict with this project's
+#      (ragas 0.4.x imports langchain_community.chat_models.vertexai, removed in
+#      langchain-community 0.4). Installing it alongside the app breaks both.
+#
+# Install into a SEPARATE virtualenv, which is what the cross-check script expects:
+#
+#   python3 -m venv .ragas-venv
+#   .ragas-venv/bin/pip install -r requirements-eval.txt
+#   GEMINI_API_KEY=... .ragas-venv/bin/python scripts/ragas_crosscheck.py
+#
+ragas==0.4.3                    # reference implementation of the RAG metrics we mirror
+datasets>=2.19.0                # RAGAS's input format (HuggingFace Dataset)
+langchain-community<0.4         # pinned: ragas 0.4.3 imports a module dropped in 0.4
+langchain-google-genai>=2.0.0   # Gemini LLM + embeddings behind the RAGAS judge
