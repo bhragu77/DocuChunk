@@ -1,0 +1,825 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pipeline Theater — DocuChunk</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; }
+
+    :root, :root[data-theme="dark"] {
+      --bg:#04070f; --bg-1:#070c18; --bg-2:#0c1220; --bg-card:#0f1826; --bg-hover:#131e2e;
+      --b:rgba(30,90,180,0.22); --b-hi:rgba(0,170,255,0.4);
+      --cyan:#00C8FF; --cyan-dim:rgba(0,200,255,0.09); --cyan-glow:rgba(0,200,255,0.18);
+      --blue:#0055FF; --text:#D8E8FF; --text2:#6888AA; --text3:#2A4060;
+      --green:#37E2A0; --yellow:#FFC24D; --red:#FF6B7D;
+      --r:10px; --rl:16px;
+      --grid:rgba(120,160,210,0.10);
+    }
+    :root[data-theme="light"] {
+      --bg:#eef3fb; --bg-1:#ffffff; --bg-2:#f4f7fc; --bg-card:#ffffff; --bg-hover:#eaf1fb;
+      --b:rgba(20,80,160,0.16); --b-hi:rgba(0,120,220,0.4);
+      --cyan:#0091c8; --cyan-dim:rgba(0,145,200,0.10); --cyan-glow:rgba(0,145,200,0.15);
+      --blue:#0055FF; --text:#0c1a2e; --text2:#546b86; --text3:#a7bad2;
+      --green:#0a9d6e; --yellow:#c98a00; --red:#d63a4e;
+      --grid:rgba(20,80,160,0.08);
+    }
+
+    body { font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;
+      background:var(--bg); color:var(--text); -webkit-font-smoothing:antialiased;
+      height:100vh; overflow:hidden; display:flex; flex-direction:column; }
+    button { font-family:inherit; cursor:pointer; }
+    .mono { font-family:'JetBrains Mono',monospace; }
+    ::-webkit-scrollbar { width:9px; height:9px; }
+    ::-webkit-scrollbar-thumb { background:var(--b); border-radius:8px; }
+
+    /* ── top bar ─────────────────────────────────────────────────────────────── */
+    .topbar { display:flex; align-items:center; gap:14px; padding:11px 18px;
+      border-bottom:1px solid var(--b); background:var(--bg-1); flex-shrink:0; }
+    .brand { display:flex; align-items:center; gap:10px; }
+    .logo-box { width:30px; height:30px; border-radius:8px; display:grid; place-items:center;
+      background:linear-gradient(135deg,var(--blue),var(--cyan)); color:#fff; font-weight:800; }
+    .brand h1 { font-size:15px; font-weight:700; letter-spacing:-.01em; }
+    .brand .sub { font-size:10.5px; color:var(--text2); letter-spacing:.04em; text-transform:uppercase; }
+    .nav { display:flex; gap:4px; margin-left:8px; }
+    .nav a { color:var(--text2); text-decoration:none; font-size:12.5px; font-weight:600;
+      padding:7px 12px; border-radius:8px; }
+    .nav a:hover { background:var(--bg-hover); color:var(--text); }
+    .nav a.active { color:var(--cyan); background:var(--cyan-dim); }
+    .spacer { flex:1; }
+    .icon-btn { width:34px; height:34px; border:1px solid var(--b); background:var(--bg-card);
+      color:var(--text2); border-radius:9px; display:grid; place-items:center; }
+    .icon-btn:hover { color:var(--cyan); border-color:var(--b-hi); }
+    .icon-btn svg { width:16px; height:16px; }
+
+    /* ── command bar ─────────────────────────────────────────────────────────── */
+    .cmd { padding:14px 18px 12px; border-bottom:1px solid var(--b); background:var(--bg-1); flex-shrink:0; }
+    .cmd-row { display:flex; gap:10px; align-items:stretch; }
+    .qbox { flex:1; display:flex; align-items:center; gap:10px; background:var(--bg-card);
+      border:1px solid var(--b); border-radius:12px; padding:2px 4px 2px 14px; transition:.15s; }
+    .qbox:focus-within { border-color:var(--b-hi); box-shadow:0 0 0 3px var(--cyan-dim); }
+    .qbox svg { width:17px; height:17px; color:var(--text2); flex-shrink:0; }
+    #q { flex:1; background:none; border:none; outline:none; color:var(--text); font-size:14px;
+      font-family:inherit; padding:11px 0; }
+    select { appearance:none; -webkit-appearance:none; background:var(--bg-card); color:var(--text);
+      border:1px solid var(--b); border-radius:10px; padding:0 30px 0 12px; font-size:12.5px; font-weight:600;
+      cursor:pointer; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236888AA' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+      background-repeat:no-repeat; background-position:right 10px center; }
+    select:hover { border-color:var(--b-hi); }
+    .run-btn { display:flex; align-items:center; gap:8px; background:linear-gradient(135deg,var(--blue),var(--cyan));
+      color:#fff; border:none; border-radius:11px; padding:0 20px; font-size:13.5px; font-weight:700; }
+    .run-btn:disabled { opacity:.5; cursor:not-allowed; }
+    .run-btn svg { width:16px; height:16px; }
+    .chips { display:flex; gap:8px; margin-top:11px; flex-wrap:wrap; align-items:center; }
+    .chips .lbl { font-size:10.5px; color:var(--text3); text-transform:uppercase; letter-spacing:.1em; font-weight:700; margin-right:2px; }
+    .chip { border:1px solid var(--b); background:var(--bg-card); color:var(--text2);
+      border-radius:100px; padding:6px 13px; font-size:12px; font-weight:600; transition:.13s; }
+    .chip:hover { border-color:var(--b-hi); color:var(--text); background:var(--bg-hover); }
+    .chip b { color:var(--cyan); font-weight:700; }
+
+    /* ── main grid ───────────────────────────────────────────────────────────── */
+    .main { flex:1; display:grid; grid-template-columns:230px 1fr 340px; gap:0; overflow:hidden; }
+    .col { overflow-y:auto; height:100%; }
+    .gallery { border-right:1px solid var(--b); background:var(--bg-1); padding:12px; }
+    .stage { padding:16px 18px; }
+    .side { border-left:1px solid var(--b); background:var(--bg-1); padding:14px; }
+    .panel-h { font-size:11px; text-transform:uppercase; letter-spacing:.12em; color:var(--text2);
+      font-weight:700; margin:2px 0 12px; display:flex; align-items:center; justify-content:space-between; }
+    .card { background:var(--bg-card); border:1px solid var(--b); border-radius:var(--r); }
+
+    /* empty state */
+    .empty { display:flex; flex-direction:column; align-items:center; justify-content:center;
+      height:70%; text-align:center; color:var(--text2); gap:14px; padding:30px; }
+    .empty .big { width:64px; height:64px; border-radius:16px; background:var(--cyan-dim);
+      display:grid; place-items:center; color:var(--cyan); }
+    .empty .big svg { width:30px; height:30px; }
+    .empty h2 { color:var(--text); font-size:18px; font-weight:700; }
+    .empty p { font-size:13px; max-width:380px; line-height:1.5; }
+
+    /* ── provenance badge ────────────────────────────────────────────────────── */
+    .prov { display:inline-flex; align-items:center; gap:7px; font-size:11px; font-weight:700;
+      padding:5px 11px; border-radius:100px; border:1px solid var(--b-hi); background:var(--cyan-dim);
+      color:var(--cyan); letter-spacing:.02em; }
+    .prov .dot { width:7px; height:7px; border-radius:50%; background:var(--cyan);
+      box-shadow:0 0 8px var(--cyan); }
+
+    /* ── topology graph ──────────────────────────────────────────────────────── */
+    .graph-wrap { position:relative; padding:8px 6px 4px; overflow-x:auto; }
+    .graph-title { display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; }
+    .graph-title .t { font-size:13px; font-weight:700; }
+    svg.graph { width:100%; min-width:640px; height:150px; display:block; }
+    .gnode rect { transition:fill .25s, stroke .25s, opacity .25s; }
+    .gnode text { font-size:11px; font-weight:600; fill:var(--text2); transition:fill .25s; }
+    .gnode .gicon { transition:opacity .25s; }
+    .gedge { stroke:var(--b); stroke-width:2; fill:none; transition:stroke .3s, opacity .3s; }
+    .gedge.on { stroke:var(--cyan); }
+    .gbadge circle { fill:var(--blue); }
+    .gbadge text { fill:#fff; font-size:9.5px; font-weight:800; }
+
+    /* ── replay controls ─────────────────────────────────────────────────────── */
+    .replay { display:flex; align-items:center; gap:12px; margin:12px 0 4px; padding:10px 14px;
+      background:var(--bg-card); border:1px solid var(--b); border-radius:var(--r); }
+    .replay button { width:34px; height:34px; border-radius:9px; border:1px solid var(--b-hi);
+      background:var(--cyan-dim); color:var(--cyan); display:grid; place-items:center; }
+    .replay button:hover { background:var(--cyan-glow); }
+    .replay .rlabel { font-size:11px; color:var(--text2); font-weight:600; }
+    .replay input[type=range] { accent-color:var(--cyan); }
+    .replay .warp { font-size:10.5px; color:var(--text3); font-style:italic; }
+
+    /* ── step timeline ───────────────────────────────────────────────────────── */
+    .tl { margin-top:14px; }
+    .tl-item { display:flex; gap:12px; padding:11px 12px; border-radius:var(--r); cursor:pointer;
+      border:1px solid transparent; opacity:.32; transition:opacity .3s, background .15s, border-color .15s; }
+    .tl-item.shown { opacity:1; }
+    .tl-item:hover { background:var(--bg-hover); }
+    .tl-item.sel { border-color:var(--b-hi); background:var(--bg-hover); }
+    .tl-rail { display:flex; flex-direction:column; align-items:center; flex-shrink:0; }
+    .tl-dot { width:30px; height:30px; border-radius:9px; display:grid; place-items:center;
+      background:var(--bg-2); border:1px solid var(--b); color:var(--text2); }
+    .tl-dot svg { width:15px; height:15px; }
+    .tl-item.shown .tl-dot { border-color:var(--b-hi); color:var(--cyan); background:var(--cyan-dim); }
+    .tl-item.err .tl-dot { border-color:var(--red); color:var(--red); background:rgba(255,107,125,.1); }
+    .tl-line { width:2px; flex:1; background:var(--b); margin-top:4px; min-height:8px; }
+    .tl-body { flex:1; min-width:0; }
+    .tl-top { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+    .tl-name { font-size:13px; font-weight:600; }
+    .tl-ms { font-size:11px; color:var(--text2); font-weight:600; flex-shrink:0; }
+    .tl-sub { font-size:12px; color:var(--text2); margin-top:2px; overflow:hidden;
+      text-overflow:ellipsis; white-space:nowrap; }
+    .tl-kind { display:inline-block; font-size:9.5px; text-transform:uppercase; letter-spacing:.08em;
+      font-weight:700; color:var(--text3); margin-right:6px; }
+
+    /* ── metrics / tiles / waterfall / gauge ─────────────────────────────────── */
+    .tiles { display:grid; grid-template-columns:1fr 1fr; gap:9px; margin-bottom:14px; }
+    .tile { padding:11px 12px; border-radius:var(--r); background:var(--bg-card); border:1px solid var(--b); }
+    .tile .k { font-size:10px; text-transform:uppercase; letter-spacing:.07em; color:var(--text2); font-weight:700; }
+    .tile .v { font-size:19px; font-weight:800; margin-top:3px; letter-spacing:-.02em; }
+    .tile .v small { font-size:11px; font-weight:600; color:var(--text2); }
+    .tile.wide { grid-column:1/3; }
+
+    .gauge-wrap { display:flex; flex-direction:column; align-items:center; padding:8px 0 6px; }
+    .gauge-val { font-size:26px; font-weight:800; margin-top:-30px; }
+    .gauge-lab { font-size:11.5px; font-weight:700; margin-top:2px; display:flex; align-items:center; gap:5px; }
+
+    .wf { margin-top:6px; }
+    .wf-row { display:flex; align-items:center; gap:8px; margin-bottom:7px; font-size:11px; }
+    .wf-name { width:74px; color:var(--text2); flex-shrink:0; text-align:right;
+      overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:600; }
+    .wf-track { flex:1; height:14px; position:relative; }
+    .wf-bar { height:14px; border-radius:0 4px 4px 0; background:var(--cyan);
+      min-width:2px; transition:width .5s ease; }
+    .wf-bar.err { background:var(--red); }
+    .wf-val { width:52px; flex-shrink:0; color:var(--text2); font-weight:600; }
+
+    /* ── inspector ───────────────────────────────────────────────────────────── */
+    .insp { margin-top:14px; }
+    .insp .kv { display:flex; gap:8px; font-size:12px; padding:5px 0; border-bottom:1px solid var(--b); }
+    .insp .kv .k { color:var(--text2); width:96px; flex-shrink:0; font-weight:600; }
+    .insp .kv .v { color:var(--text); word-break:break-word; flex:1; }
+    .insp pre { background:var(--bg-2); border:1px solid var(--b); border-radius:8px; padding:9px;
+      font-size:11px; color:var(--text); white-space:pre-wrap; word-break:break-word; margin-top:6px;
+      max-height:160px; overflow:auto; font-family:'JetBrains Mono',monospace; }
+    .chunk { padding:8px 10px; border:1px solid var(--b); border-radius:8px; margin-top:7px; background:var(--bg-2); }
+    .chunk .ch-top { display:flex; justify-content:space-between; font-size:10.5px; color:var(--text2); font-weight:600; margin-bottom:3px; }
+    .chunk .ch-tx { font-size:11.5px; color:var(--text); line-height:1.45; }
+    .score-pill { font-size:9.5px; font-weight:700; color:var(--cyan); background:var(--cyan-dim);
+      border-radius:100px; padding:1px 7px; }
+
+    /* ── answer panel ────────────────────────────────────────────────────────── */
+    .answer { margin-top:16px; padding:15px 16px; border-radius:var(--rl);
+      background:var(--bg-card); border:1px solid var(--b); }
+    .answer .ah { font-size:11px; text-transform:uppercase; letter-spacing:.12em; color:var(--text2);
+      font-weight:700; margin-bottom:9px; display:flex; align-items:center; justify-content:space-between; }
+    .answer .atext { font-size:14px; line-height:1.65; color:var(--text); }
+    .verdict { display:inline-flex; align-items:center; gap:6px; font-size:11px; font-weight:700;
+      padding:4px 10px; border-radius:100px; }
+    .verdict.ok { color:var(--green); background:rgba(55,226,160,.12); }
+    .verdict.warn { color:var(--yellow); background:rgba(255,194,77,.12); }
+    .verdict.bad { color:var(--red); background:rgba(255,107,125,.12); }
+    .lf-link { display:inline-flex; align-items:center; gap:6px; font-size:11.5px; font-weight:600;
+      color:var(--cyan); text-decoration:none; }
+    .lf-link:hover { text-decoration:underline; }
+
+    /* ── gallery items ───────────────────────────────────────────────────────── */
+    .grun { padding:10px 11px; border-radius:var(--r); border:1px solid var(--b); margin-bottom:8px;
+      cursor:pointer; background:var(--bg-card); transition:.13s; position:relative; }
+    .grun:hover { border-color:var(--b-hi); }
+    .grun.active { border-color:var(--cyan); box-shadow:0 0 0 2px var(--cyan-dim); }
+    .grun .gq { font-size:12px; color:var(--text); font-weight:600; overflow:hidden;
+      text-overflow:ellipsis; white-space:nowrap; padding-right:16px; }
+    .grun .gmeta { display:flex; gap:6px; margin-top:6px; flex-wrap:wrap; align-items:center; }
+    .g-tag { font-size:9.5px; font-weight:700; padding:2px 7px; border-radius:100px;
+      background:var(--bg-2); color:var(--text2); }
+    .g-tag.model { color:var(--cyan); background:var(--cyan-dim); }
+    .g-tag.hop { color:var(--yellow); background:rgba(255,194,77,.12); }
+    .g-tag.err { color:var(--red); background:rgba(255,107,125,.12); }
+    .g-del { position:absolute; top:8px; right:8px; width:20px; height:20px; border:none; background:none;
+      color:var(--text3); border-radius:6px; display:grid; place-items:center; opacity:0; }
+    .grun:hover .g-del { opacity:1; }
+    .g-del:hover { color:var(--red); background:var(--bg-hover); }
+    .g-empty { font-size:12px; color:var(--text2); padding:14px 4px; line-height:1.5; }
+
+    .toast { position:fixed; bottom:22px; left:50%; transform:translateX(-50%) translateY(20px);
+      background:var(--bg-card); border:1px solid var(--b-hi); color:var(--text); padding:10px 18px;
+      border-radius:100px; font-size:13px; font-weight:600; opacity:0; transition:.25s; z-index:100;
+      box-shadow:0 10px 30px rgba(0,0,0,.35); }
+    .toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+    /* ── Confirm dialog (designed replacement for window.confirm) ──
+       Same component as the dashboard and chat pages, so a destructive action
+       looks identical wherever it appears. */
+    .overlay { position:fixed; inset:0; background:rgba(0,0,0,.62); z-index:200; display:none;
+      align-items:center; justify-content:center; padding:20px; backdrop-filter:blur(2px); }
+    .overlay.show { display:flex; }
+    .confirm-card { width:400px; max-width:calc(100vw - 32px); text-align:center; background:var(--bg-card);
+      border:1px solid var(--b); border-radius:var(--rl); padding:28px 26px 22px; animation:cfIn .2s ease; }
+    @keyframes cfIn { from { opacity:0; transform:scale(.96) translateY(6px); } to { opacity:1; transform:none; } }
+    .confirm-ico { width:54px; height:54px; border-radius:15px; margin:0 auto 16px; display:grid; place-items:center;
+      background:rgba(248,113,113,0.12); border:1px solid rgba(248,113,113,0.32); color:#f87171; }
+    .confirm-ico svg { width:26px; height:26px; }
+    .confirm-title { font-size:1.15rem; font-weight:800; letter-spacing:-0.01em; margin-bottom:8px; }
+    .confirm-msg { font-size:0.88rem; color:var(--text2); line-height:1.55; margin-bottom:22px; }
+    .confirm-msg b { color:var(--text); font-weight:600; word-break:break-word; }
+    .confirm-actions { display:flex; gap:10px; }
+    .cf-btn { flex:1; padding:11px 14px; border-radius:10px; font-size:0.9rem; font-weight:600; cursor:pointer; transition:.15s; }
+    .cf-cancel { background:var(--bg-2); color:var(--text); border:1px solid var(--b); }
+    .cf-cancel:hover { border-color:var(--b-hi); background:var(--bg-hover); }
+    .cf-danger { background:linear-gradient(135deg,#e0384e,#f87171); color:#fff; border:none; }
+    .cf-danger:hover { filter:brightness(1.07); box-shadow:0 8px 22px rgba(224,56,78,0.38); }
+
+    .running-bar { height:2px; background:linear-gradient(90deg,transparent,var(--cyan),transparent);
+      background-size:200% 100%; animation:slide 1.1s linear infinite; border-radius:2px; }
+    @keyframes slide { to { background-position:-200% 0; } }
+    @media (prefers-reduced-motion: reduce){ *{ animation:none !important; transition:none !important; } }
+
+    @media (max-width:1100px){ .main{ grid-template-columns:1fr; } .gallery,.side{ border:none; border-top:1px solid var(--b); } }
+  </style>
+</head>
+<body>
+  <!-- ── top bar ── -->
+  <div class="topbar">
+    <div class="brand">
+      <div class="logo-box">◆</div>
+      <div>
+        <h1>Pipeline Theater</h1>
+        <div class="sub">Record → Replay · faithful per query</div>
+      </div>
+    </div>
+    <nav class="nav">
+      <a href="/dashboard">Dashboard</a>
+      <a href="/chat">Chat</a>
+      <a href="/pipeline" class="active">Pipeline</a>
+    </nav>
+    <div class="spacer"></div>
+    <button class="icon-btn" id="themeBtn" aria-label="Toggle theme"><span id="themeIcon"></span></button>
+  </div>
+
+  <!-- ── command bar ── -->
+  <div class="cmd">
+    <div class="cmd-row">
+      <label class="qbox">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input id="q" placeholder="Ask a question — it runs the real pipeline and records the trace…" />
+      </label>
+      <select id="modelSel" aria-label="Model"></select>
+      <button class="run-btn" id="runBtn">
+        <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        <span>Run</span>
+      </button>
+    </div>
+    <div class="chips" id="chips"><span class="lbl">Try these</span></div>
+  </div>
+
+  <!-- ── main grid ── -->
+  <div class="main">
+    <!-- gallery -->
+    <div class="col gallery">
+      <div class="panel-h">Recent runs <span id="galCount" class="mono"></span></div>
+      <div id="galList"><div class="g-empty">No runs yet — run a query to record one.</div></div>
+    </div>
+
+    <!-- stage -->
+    <div class="col stage" id="stage">
+      <div class="empty" id="emptyState">
+        <div class="big"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/></svg></div>
+        <h2>Watch your pipeline think</h2>
+        <p>Run a query above (or tap a “Try these” chip). Every run executes the real
+           retrieval → agent → generate → verify pipeline once, records exactly what
+           happened, and replays it here — timeline, graph, cost and groundedness.</p>
+      </div>
+      <div id="stageBody" style="display:none">
+        <div class="graph-title">
+          <span class="t">Pipeline flow</span>
+          <span class="prov" id="provBadge"><span class="dot"></span><span id="provText">recorded</span></span>
+        </div>
+        <div class="card graph-wrap"><svg class="graph" id="graph" viewBox="0 0 720 150" preserveAspectRatio="xMidYMid meet"></svg></div>
+
+        <div class="replay">
+          <button id="playBtn" aria-label="Play/pause"></button>
+          <button id="restartBtn" aria-label="Restart">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+          </button>
+          <span class="rlabel">Replay</span>
+          <div class="spacer"></div>
+          <span class="rlabel">Speed</span>
+          <input type="range" id="speed" min="0.5" max="4" step="0.5" value="1.5" />
+          <span class="rlabel mono" id="speedVal">1.5×</span>
+          <span class="warp">playback speed only — durations shown are real</span>
+        </div>
+
+        <div class="tl" id="timeline"></div>
+        <div class="answer" id="answerPanel" style="display:none"></div>
+      </div>
+    </div>
+
+    <!-- side metrics + inspector -->
+    <div class="col side" id="side" style="display:none">
+      <div class="panel-h">Metrics</div>
+      <div class="tiles" id="tiles"></div>
+      <div class="card" style="padding:12px 14px 6px">
+        <div class="panel-h" style="margin-bottom:2px">Groundedness</div>
+        <div class="gauge-wrap" id="gauge"></div>
+      </div>
+      <div style="margin-top:14px">
+        <div class="panel-h">Latency waterfall</div>
+        <div class="wf" id="waterfall"></div>
+      </div>
+      <div class="insp" id="inspector"></div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <!-- Confirm dialog (replaces window.confirm for a designed, on-brand alert) -->
+  <div class="overlay" id="confirmOverlay">
+    <div class="confirm-card" role="alertdialog" aria-modal="true" aria-labelledby="confirmTitle" aria-describedby="confirmMsg">
+      <div class="confirm-ico">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/><path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/></svg>
+      </div>
+      <h3 class="confirm-title" id="confirmTitle">Delete run?</h3>
+      <p class="confirm-msg" id="confirmMsg"></p>
+      <div class="confirm-actions">
+        <button class="cf-btn cf-cancel" id="confirmCancel" type="button">Cancel</button>
+        <button class="cf-btn cf-danger" id="confirmOk" type="button">Delete</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+const $ = id => document.getElementById(id);
+const token = localStorage.getItem('access_token');
+if (!token) location.href = '/login';
+function apiFetch(path, opts = {}) {
+  return fetch(path, { ...opts, headers: {
+    'Authorization':'Bearer ' + token,
+    'Content-Type':'application/json', ...(opts.headers||{}),
+  }});
+}
+function esc(s){ return String(s??'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function toast(m){ const t=$('toast'); t.textContent=m; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2200); }
+function fmtMs(ms){ ms=+ms||0; return ms>=1000 ? (ms/1000).toFixed(ms>=10000?0:2)+'s' : Math.round(ms)+'ms'; }
+function fmtInr(v){ return v==null ? '—' : (v<0.01 ? '₹'+v.toFixed(4) : '₹'+v.toFixed(3)); }
+/* Exact wall-clock stamp, to the second. This is a debugging surface — "5h ago" is
+   useless when correlating a run against server logs, and it silently rounds a
+   6-minute-old run down to the same label as a 90-minute-old one. Same-day runs drop
+   the date so the column stays narrow; older ones keep it. Rendered in the viewer's
+   local timezone (created_at now carries a UTC offset, so this converts correctly). */
+function fmtTime(iso){
+  if(!iso) return '';
+  const d=new Date(iso); if(isNaN(d)) return '';
+  const hms=d.toLocaleTimeString(undefined,{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false});
+  const sameDay=d.toDateString()===new Date().toDateString();
+  return sameDay ? hms : d.toLocaleDateString(undefined,{day:'2-digit',month:'short'})+' '+hms;
+}
+/* Relative age — kept for the tooltip, where "just now" is the useful read. */
+function fmtAgo(iso){
+  if(!iso) return '';
+  const d=new Date(iso); if(isNaN(d)) return '';
+  const s=(new Date()-d)/1000;
+  if(s<0) return 'just now';
+  if(s<60) return 'just now';
+  if(s<3600) return Math.floor(s/60)+'m ago';
+  if(s<86400) return Math.floor(s/3600)+'h ago';
+  return Math.floor(s/86400)+'d ago';
+}
+
+/* ── theme ── */
+(function(){ const t=localStorage.getItem('theme')||'dark'; document.documentElement.setAttribute('data-theme',t); setThemeIcon(t); })();
+function setThemeIcon(t){ $('themeIcon').innerHTML = t==='dark'
+  ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.2" y1="4.2" x2="5.6" y2="5.6"/><line x1="18.4" y1="18.4" x2="19.8" y2="19.8"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.2" y1="19.8" x2="5.6" y2="18.4"/><line x1="18.4" y1="5.6" x2="19.8" y2="4.2"/></svg>`
+  : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>`; }
+$('themeBtn').onclick = () => { const n=document.documentElement.getAttribute('data-theme')==='dark'?'light':'dark';
+  document.documentElement.setAttribute('data-theme',n); localStorage.setItem('theme',n); setThemeIcon(n);
+  if (RUN) { drawGraph(); }  // repaint SVG colors for the new theme
+};
+
+/* ── state ── */
+let RUN = null;            // current artifact
+let GALLERY = [];          // last-rendered run summaries, newest-first (from the API)
+let selectedModel = null;
+let SVG_NS = 'http://www.w3.org/2000/svg';
+let replay = { i:0, playing:false, timer:null, speed:1.5 };
+
+/* ── icons per stage kind ── */
+const KIND_ICON = {
+  router:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg>`,
+  agent:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M5 19l2-2M17 7l2-2"/></svg>`,
+  fallback:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.5 15a9 9 0 1 0 2.1-9.4L1 10"/></svg>`,
+  retrieve:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>`,
+  generate:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l2.4 7.4H22l-6 4.6 2.3 7.4-6.3-4.6L5.7 21 8 14 2 9.4h7.6z"/></svg>`,
+  verify:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12l2 2 4-4"/><path d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"/></svg>`,
+  answer:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>`,
+  query:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v12H5.2L4 17.2z"/></svg>`,
+};
+
+/* ══════════ boot ══════════ */
+async function boot(){
+  await loadModels();
+  await loadExamples();
+  await loadGallery();
+  const speed=$('speed'); speed.oninput=()=>{ replay.speed=+speed.value; $('speedVal').textContent=replay.speed+'×'; };
+  $('runBtn').onclick = runQuery;
+  $('q').addEventListener('keydown', e => { if(e.key==='Enter'){ e.preventDefault(); runQuery(); } });
+  $('playBtn').onclick = togglePlay;
+  $('restartBtn').onclick = () => { stopReplay(); replay.i=0; applyReplay(); startReplay(); };
+  setPlayIcon();
+}
+async function loadModels(){
+  let data={models:[],default:null};
+  try { data = await apiFetch('/generate/models').then(r=>r.ok?r.json():data); } catch(e){}
+  const sel=$('modelSel');
+  if (!data.models.length){ sel.innerHTML='<option value="">default</option>'; selectedModel=null; return; }
+  sel.innerHTML = data.models.map(m=>`<option value="${m.key}">${esc(m.label)}</option>`).join('');
+  const saved=localStorage.getItem('docuchunk.model');
+  const keys=data.models.map(m=>m.key);
+  selectedModel = keys.includes(saved)?saved:(keys.includes(data.default)?data.default:keys[0]);
+  sel.value=selectedModel;
+  sel.onchange=()=>{ selectedModel=sel.value; localStorage.setItem('docuchunk.model',selectedModel); };
+}
+async function loadExamples(){
+  let ex=[]; try { ex=(await apiFetch('/pipeline/examples').then(r=>r.json())).examples||[]; } catch(e){}
+  const box=$('chips');
+  ex.forEach(e=>{
+    const c=document.createElement('button'); c.className='chip'; c.title=e.why+' — expect: '+e.expect;
+    c.innerHTML=esc(e.label)+' <b>·</b> '+esc(e.expect);
+    c.onclick=()=>{ $('q').value=e.query; runQuery(); };
+    box.appendChild(c);
+  });
+}
+async function loadGallery(){
+  let runs=[]; try { runs=await apiFetch('/pipeline/runs').then(r=>r.ok?r.json():[]); } catch(e){}
+  renderGallery(runs);
+}
+function renderGallery(runs){
+  GALLERY = runs || [];   // every render path goes through here, so this stays current
+  $('galCount').textContent = runs.length?('('+runs.length+')'):'';
+  const list=$('galList');
+  if (!runs.length){ list.innerHTML='<div class="g-empty">No runs yet — run a query to record one.</div>'; return; }
+  list.innerHTML = runs.map(r=>`
+    <div class="grun ${RUN&&RUN.run_id===r.run_id?'active':''}" data-id="${r.run_id}">
+      <button class="g-del" data-del="${r.run_id}" title="Delete run">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>
+      </button>
+      <div class="gq">${esc(r.query)}</div>
+      <div class="gmeta">
+        <span class="g-tag model">${esc(r.model_name||r.provider)}</span>
+        ${r.multi_hop?'<span class="g-tag hop">multi-hop</span>':''}
+        ${r.status==='error'?'<span class="g-tag err">error</span>':r.status==='abstained'?'<span class="g-tag">abstained</span>':''}
+        <span class="g-tag mono">${fmtMs(r.total_ms)}</span>
+        <span class="g-tag mono" title="${esc(new Date(r.created_at).toString())} — ${esc(fmtAgo(r.created_at))}">${fmtTime(r.created_at)}</span>
+      </div>
+    </div>`).join('');
+  list.querySelectorAll('.grun').forEach(el=> el.onclick=e=>{ if(e.target.closest('.g-del'))return; openRun(el.dataset.id); });
+  list.querySelectorAll('.g-del').forEach(b=> b.onclick=e=>{ e.stopPropagation(); delRun(b.dataset.del); });
+}
+/* Promise-based confirm dialog — resolves true (confirmed) / false (cancelled).
+   Backdrop click, Cancel and Escape all cancel; Enter confirms. */
+function confirmDialog({ title='Are you sure?', message='', confirmText='Delete' } = {}){
+  return new Promise(resolve => {
+    const ov=$('confirmOverlay'), ok=$('confirmOk'), cancel=$('confirmCancel');
+    $('confirmTitle').textContent=title;
+    $('confirmMsg').innerHTML=message;
+    ok.textContent=confirmText;
+    function done(v){
+      ov.classList.remove('show');
+      ok.removeEventListener('click',onOk);
+      cancel.removeEventListener('click',onCancel);
+      ov.removeEventListener('click',onBackdrop);
+      document.removeEventListener('keydown',onKey,true);
+      resolve(v);
+    }
+    function onOk(){ done(true); }
+    function onCancel(){ done(false); }
+    function onBackdrop(e){ if(e.target===ov) done(false); }
+    function onKey(e){
+      if(e.key==='Escape'){ e.stopPropagation(); done(false); }
+      else if(e.key==='Enter'){ e.stopPropagation(); done(true); }
+    }
+    ok.addEventListener('click',onOk);
+    cancel.addEventListener('click',onCancel);
+    ov.addEventListener('click',onBackdrop);
+    document.addEventListener('keydown',onKey,true);
+    ov.classList.add('show');
+    ok.focus();
+  });
+}
+
+async function delRun(id){
+  const row=(GALLERY||[]).find(r=>r.run_id===id);
+  const label=row ? (row.query||'this run') : 'this run';
+  const ok=await confirmDialog({
+    title:'Delete run?',
+    message:`This permanently removes the recorded trace for <b>${esc(label.slice(0,120))}${label.length>120?'…':''}</b>, including every stage timing and cost. This can’t be undone.`,
+    confirmText:'Delete',
+  });
+  if(!ok) return;
+  try { await apiFetch('/pipeline/runs/'+id,{method:'DELETE'}); } catch(e){ toast('Delete failed'); return; }
+  const wasOpen = RUN && RUN.run_id===id;
+  await loadGallery();
+  // If the open run was the one deleted, fall through to the most RECENT remaining
+  // run rather than dumping the user on the empty state.
+  if (wasOpen){
+    const next=(GALLERY||[])[0];   // gallery is already newest-first from the API
+    if (next){ await openRun(next.run_id); }
+    else { RUN=null; $('stageBody').style.display='none'; $('side').style.display='none'; $('emptyState').style.display='flex'; }
+  }
+  toast('Run deleted');
+}
+
+/* ══════════ run + open ══════════ */
+async function runQuery(){
+  const query=$('q').value.trim(); if(!query) return;
+  const btn=$('runBtn'); btn.disabled=true; btn.querySelector('span').textContent='Running…';
+  $('emptyState').innerHTML='<div class="big"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg></div><h2>Running the pipeline…</h2><p>Executing retrieval → agent → generate → verify, and recording every stage.</p><div class="running-bar" style="width:220px"></div>';
+  $('emptyState').style.display='flex'; $('stageBody').style.display='none'; $('side').style.display='none';
+  const body={ query }; if(selectedModel) body.model=selectedModel;
+  try {
+    const art=await apiFetch('/pipeline/runs',{method:'POST',body:JSON.stringify(body)}).then(async r=>{
+      if(!r.ok){ throw (await r.json().catch(()=>({detail:'run failed'}))); } return r.json(); });
+    RUN=art; render(art); loadGallery();
+  } catch(e){
+    $('emptyState').innerHTML='<div class="big" style="color:var(--red);background:rgba(255,107,125,.12)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div><h2>Couldn’t run</h2><p>'+esc(e.detail||'Something went wrong. Is a model configured?')+'</p>';
+  } finally { btn.disabled=false; btn.querySelector('span').textContent='Run'; }
+}
+async function openRun(id){
+  try { const art=await apiFetch('/pipeline/runs/'+id).then(r=>r.json()); RUN=art; render(art); renderGallery(await apiFetch('/pipeline/runs').then(r=>r.json())); }
+  catch(e){ toast('Could not open run'); }
+}
+
+/* ══════════ render ══════════ */
+function render(art){
+  $('emptyState').style.display='none'; $('stageBody').style.display='block'; $('side').style.display='block';
+  $('provText').textContent = art.provenance || ('recorded · '+art.provider);
+  drawGraph();
+  renderTimeline();
+  renderTiles();
+  renderGauge();
+  renderWaterfall();
+  renderAnswer();
+  $('inspector').innerHTML='';
+  // start the replay from the top
+  stopReplay(); replay.i=0; applyReplay(); startReplay();
+}
+
+/* ── topology graph (SVG) ── */
+const NODES = [
+  {id:'query', label:'Query', kind:'query'},
+  {id:'router', label:'Router', kind:'router'},
+  {id:'agent', label:'Agent', kind:'agent'},
+  {id:'retrieve', label:'Retrieve', kind:'retrieve'},
+  {id:'generate', label:'Generate', kind:'generate'},
+  {id:'verify', label:'Verify', kind:'verify'},
+  {id:'answer', label:'Answer', kind:'answer'},
+];
+// which nodes each played timeline-step activates
+function nodeForStep(st){
+  if(st.kind==='router') return 'router';
+  if(st.kind==='agent'||st.kind==='fallback') return 'retrieve';  // also lights 'agent'
+  if(st.kind==='generate') return 'generate';
+  if(st.kind==='verify') return 'verify';
+  return null;
+}
+function drawGraph(){
+  const svg=$('graph'); svg.innerHTML='';
+  const W=720, n=NODES.length, pad=40, gap=(W-2*pad)/(n-1), y=64, bw=74, bh=40;
+  const cs=getComputedStyle(document.documentElement);
+  const col=k=>cs.getPropertyValue(k).trim();
+  const xOf=i=>pad+i*gap;
+  // active set based on replay progress
+  const played = (RUN?.steps||[]).slice(0, replay.i);
+  const active=new Set(['query']);
+  let hops=0, agentLit=false;
+  played.forEach(st=>{ const nd=nodeForStep(st); if(nd) active.add(nd);
+    if(st.kind==='agent'||st.kind==='fallback'){ agentLit=true; if(st.status==='ok'&&(st.detail?.new_chunks>0||st.kind==='fallback')) hops++; } });
+  if(agentLit) active.add('agent');
+  const done = RUN && replay.i>=(RUN.steps||[]).length;
+  if(done && RUN.answer!=null && RUN.verdict?.status!=='error') active.add('answer');
+  const abstained = RUN?.verdict?.abstained;
+
+  // edges (straight) + a loop-back arc agent↔retrieve for multi-hop
+  const idx=Object.fromEntries(NODES.map((nd,i)=>[nd.id,i]));
+  function edge(a,b,on){ const p=document.createElementNS(SVG_NS,'line');
+    p.setAttribute('x1',xOf(idx[a])+bw/2); p.setAttribute('y1',y+bh/2);
+    p.setAttribute('x2',xOf(idx[b])-bw/2); p.setAttribute('y2',y+bh/2);
+    p.setAttribute('class','gedge'+(on?' on':'')); svg.appendChild(p); }
+  for(let i=0;i<n-1;i++){ const a=NODES[i].id, b=NODES[i+1].id; edge(a,b, active.has(a)&&active.has(b)); }
+  // multi-hop loop arc over agent↔retrieve
+  if(hops>1){
+    const ax=xOf(idx['agent']), rx=xOf(idx['retrieve']);
+    const arc=document.createElementNS(SVG_NS,'path');
+    arc.setAttribute('d',`M ${ax} ${y} C ${ax} ${y-34}, ${rx} ${y-34}, ${rx} ${y}`);
+    arc.setAttribute('class','gedge on'); arc.setAttribute('stroke-dasharray','4 3'); svg.appendChild(arc);
+    const t=document.createElementNS(SVG_NS,'text'); t.setAttribute('x',(ax+rx)/2); t.setAttribute('y',y-38);
+    t.setAttribute('text-anchor','middle'); t.setAttribute('style',`fill:${col('--yellow')};font-size:10px;font-weight:800`);
+    t.textContent=`×${hops} hops`; svg.appendChild(t);
+  }
+  // nodes
+  NODES.forEach((nd,i)=>{
+    const g=document.createElementNS(SVG_NS,'g'); g.setAttribute('class','gnode');
+    const on=active.has(nd.id);
+    const isErr = nd.id==='answer' && (RUN?.verdict?.status==='error');
+    const isAbs = nd.id==='answer' && abstained;
+    const x=xOf(i)-bw/2;
+    const rect=document.createElementNS(SVG_NS,'rect');
+    rect.setAttribute('x',x); rect.setAttribute('y',y-bh/2+8); rect.setAttribute('width',bw); rect.setAttribute('height',bh);
+    rect.setAttribute('rx',10);
+    rect.setAttribute('fill', on?col('--cyan-dim'):col('--bg-2'));
+    rect.setAttribute('stroke', isErr?col('--red'):isAbs?col('--yellow'):on?col('--b-hi'):col('--b'));
+    rect.setAttribute('stroke-width', on?'1.6':'1');
+    if(!on) rect.setAttribute('opacity','.6');
+    g.appendChild(rect);
+    const t=document.createElementNS(SVG_NS,'text'); t.setAttribute('x',xOf(i)); t.setAttribute('y',y+bh/2+22);
+    t.setAttribute('text-anchor','middle'); t.textContent=nd.label;
+    if(on) t.setAttribute('style',`fill:${col('--text')}`);
+    g.appendChild(t);
+    // count badges
+    let badge=null;
+    if(nd.id==='agent'){ const c=(RUN?.totals?.steps)||0; if(c) badge=c; }
+    if(nd.id==='retrieve'){ const c=(RUN?.totals?.chunks)||0; if(c) badge=c; }
+    if(badge && on){
+      const bg=document.createElementNS(SVG_NS,'g'); bg.setAttribute('class','gbadge');
+      const cx=x+bw-6, cy=y-bh/2+8;
+      const cc=document.createElementNS(SVG_NS,'circle'); cc.setAttribute('cx',cx); cc.setAttribute('cy',cy); cc.setAttribute('r',9);
+      cc.setAttribute('fill',col('--blue')); bg.appendChild(cc);
+      const bt=document.createElementNS(SVG_NS,'text'); bt.setAttribute('x',cx); bt.setAttribute('y',cy+3.5);
+      bt.setAttribute('text-anchor','middle'); bt.setAttribute('style','fill:#fff;font-size:9.5px;font-weight:800');
+      bt.textContent=badge; bg.appendChild(bt); g.appendChild(bg);
+    }
+    svg.appendChild(g);
+  });
+}
+
+/* ── step timeline ── */
+function renderTimeline(){
+  const steps=RUN.steps||[]; const tl=$('timeline');
+  tl.innerHTML = steps.map((st,i)=>{
+    const icon=KIND_ICON[st.kind]||KIND_ICON.agent;
+    const sub = subLine(st);
+    return `<div class="tl-item ${st.status==='error'?'err':''}" data-i="${i}">
+      <div class="tl-rail"><div class="tl-dot">${icon}</div>${i<steps.length-1?'<div class="tl-line"></div>':''}</div>
+      <div class="tl-body">
+        <div class="tl-top"><div class="tl-name"><span class="tl-kind">${esc(st.kind)}</span>${esc(st.label)}</div>
+          <div class="tl-ms mono">${fmtMs(st.duration_ms)}</div></div>
+        <div class="tl-sub">${sub}</div>
+      </div></div>`;
+  }).join('');
+  tl.querySelectorAll('.tl-item').forEach(el=> el.onclick=()=>{ selectStep(+el.dataset.i); });
+}
+function subLine(st){
+  const d=st.detail||{};
+  if(st.kind==='router') return `type: ${esc(d.query_type)} · task: ${esc(d.answer_task)}`;
+  if(st.kind==='agent'||st.kind==='fallback'){ let s=esc(d.summary||d.tool||''); return s; }
+  if(st.kind==='generate'){ if(d.error) return '<span style="color:var(--red)">'+esc(d.error)+'</span>';
+    return `${esc(d.model||'')} · ${d.input_tokens||0}→${d.output_tokens||0} tok · ${fmtInr(d.cost_inr)}`; }
+  if(st.kind==='verify') return `grounded: ${d.grounded?'yes':'no'} · confidence ${(100*(d.confidence||0)).toFixed(0)}%`;
+  return '';
+}
+function selectStep(i){
+  document.querySelectorAll('.tl-item').forEach(el=>el.classList.toggle('sel', +el.dataset.i===i));
+  renderInspector(RUN.steps[i]);
+}
+
+/* ── inspector ── */
+function renderInspector(st){
+  const d=st.detail||{}; const box=$('inspector'); let h=`<div class="panel-h">Step inspector</div>`;
+  const kv=(k,v)=>`<div class="kv"><div class="k">${esc(k)}</div><div class="v">${v}</div></div>`;
+  h+=kv('stage', esc(st.label));
+  h+=kv('status', st.status==='error'?'<span style="color:var(--red)">error</span>':'ok');
+  h+=kv('duration', '<span class="mono">'+fmtMs(st.duration_ms)+'</span>');
+  if(st.kind==='router'){ h+=kv('query type',esc(d.query_type)); h+=kv('answer task',esc(d.answer_task)); }
+  if(st.kind==='agent'||st.kind==='fallback'){
+    h+=kv('tool',esc(d.tool)); if(d.new_chunks!=null) h+=kv('new chunks',d.new_chunks);
+    if(d.cost) h+=kv('tokens', (d.cost.input_tokens||0)+'→'+(d.cost.output_tokens||0));
+    if(d.args&&Object.keys(d.args).length) h+='<pre>'+esc(JSON.stringify(d.args,null,2))+'</pre>';
+    if(d.observation) h+='<pre>'+esc(d.observation)+'</pre>';
+    if(d.error) h+=kv('error','<span style="color:var(--red)">'+esc(d.error)+'</span>');
+  }
+  if(st.kind==='generate'){ h+=kv('model',esc(d.model)); h+=kv('tokens',(d.input_tokens||0)+' in / '+(d.output_tokens||0)+' out');
+    h+=kv('cost',fmtInr(d.cost_inr)); if(d.error) h+=kv('error','<span style="color:var(--red)">'+esc(d.error)+'</span>'); }
+  if(st.kind==='verify'){ h+=kv('grounded',d.grounded?'yes':'no'); h+=kv('confidence',(100*(d.confidence||0)).toFixed(0)+'%');
+    h+=kv('verified',d.verified?'yes':'no'); h+=kv('abstained',d.abstained?'yes':'no');
+    if((d.unsupported_claims||[]).length) h+='<pre>'+esc(d.unsupported_claims.join('\n'))+'</pre>'; }
+  // evidence chunks — most relevant for retrieval steps
+  if((st.kind==='agent'||st.kind==='fallback') && (RUN.chunks||[]).length){
+    h+='<div class="panel-h" style="margin-top:14px">Evidence gathered (top)</div>';
+    (RUN.chunks||[]).slice(0,4).forEach(c=>{ h+=`<div class="chunk"><div class="ch-top"><span>${esc(c.source)} · p${c.page}</span><span class="score-pill">rr ${(c.reranker_score||0).toFixed(2)}</span></div><div class="ch-tx">${esc(c.excerpt)}</div></div>`; });
+  }
+  box.innerHTML=h;
+}
+
+/* ── metrics tiles ── */
+function renderTiles(){
+  const t=RUN.totals||{}; const box=$('tiles');
+  box.innerHTML =
+    tile('Latency', fmtMs(t.latency_ms)) +
+    tile('Cost', fmtInr(t.cost_inr)) +
+    tile('Tokens', (t.input_tokens||0)+' <small>in</small> · '+(t.output_tokens||0)+' <small>out</small>') +
+    tile('Chunks', (t.chunks||0)) +
+    tile('Agent steps', (t.steps||0)) +
+    tile('Multi-hop', t.multi_hop?'<span style="color:var(--yellow)">yes</span>':'no');
+}
+function tile(k,v){ return `<div class="tile"><div class="k">${k}</div><div class="v">${v}</div></div>`; }
+
+/* ── groundedness gauge (semicircle) ── */
+function renderGauge(){
+  const v=RUN.verdict||{}; const conf=v.abstained?0:(v.confidence||0);
+  const cs=getComputedStyle(document.documentElement); const col=k=>cs.getPropertyValue(k).trim();
+  const color = v.abstained?col('--text2') : conf>=0.7?col('--green') : conf>=0.4?col('--yellow') : col('--red');
+  const R=52, cx=70, cy=64, circ=Math.PI*R, off=circ*(1-conf);
+  const lab = v.abstained?'Abstained' : conf>=0.7?'Grounded' : conf>=0.4?'Low confidence' : 'Unreliable';
+  const icon = v.abstained?'⚑' : conf>=0.7?'✓' : conf>=0.4?'⚠' : '✗';
+  $('gauge').innerHTML = `
+    <svg width="140" height="82" viewBox="0 0 140 82">
+      <path d="M18 64 A52 52 0 0 1 122 64" fill="none" stroke="${col('--b')}" stroke-width="11" stroke-linecap="round"/>
+      <path d="M18 64 A52 52 0 0 1 122 64" fill="none" stroke="${color}" stroke-width="11" stroke-linecap="round"
+            stroke-dasharray="${circ}" stroke-dashoffset="${off}" style="transition:stroke-dashoffset .6s ease"/>
+    </svg>
+    <div class="gauge-val" style="color:${color}">${(conf*100).toFixed(0)}%</div>
+    <div class="gauge-lab" style="color:${color}">${icon} ${lab}</div>`;
+}
+
+/* ── latency waterfall (single-hue magnitude) ── */
+function renderWaterfall(){
+  const steps=RUN.steps||[]; const max=Math.max(1,...steps.map(s=>s.duration_ms||0));
+  $('waterfall').innerHTML = steps.map(s=>{
+    const w=Math.max(2,Math.round(100*(s.duration_ms||0)/max));
+    return `<div class="wf-row" title="${esc(s.label)}: ${fmtMs(s.duration_ms)}">
+      <span class="wf-name">${esc(s.kind)}</span>
+      <span class="wf-track"><span class="wf-bar ${s.status==='error'?'err':''}" style="width:${w}%"></span></span>
+      <span class="wf-val mono">${fmtMs(s.duration_ms)}</span></div>`;
+  }).join('');
+}
+
+/* ── answer panel ── */
+function renderAnswer(){
+  const p=$('answerPanel'); const v=RUN.verdict||{};
+  if(RUN.answer==null && v.status==='error'){
+    p.style.display='block';
+    p.innerHTML=`<div class="ah">Answer <span class="verdict bad">✗ no answer</span></div><div class="atext" style="color:var(--text2)">The pipeline gathered no usable evidence for this query.</div>`;
+    return;
+  }
+  p.style.display='block';
+  const cls=v.abstained?'warn':(v.confidence>=0.7?'ok':v.confidence>=0.4?'warn':'bad');
+  const vtxt=v.abstained?'⚑ abstained':(v.confidence>=0.7?'✓ grounded':v.confidence>=0.4?'⚠ low confidence':'✗ unreliable');
+  const lf = RUN.langfuse ? `<a class="lf-link" target="_blank" href="${esc(RUN.langfuse.host)}/trace/${esc(RUN.langfuse.trace_id)}">View full trace in Langfuse →</a>` : '';
+  const cites = (RUN.citations||[]).length ? '<div style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap">'+
+    RUN.citations.map(c=>`<span class="g-tag" title="${esc(c.excerpt)}">[${c.index}] ${esc(c.source)} · p${c.page}</span>`).join('')+'</div>' : '';
+  p.innerHTML = `<div class="ah"><span>Answer <span class="verdict ${cls}">${vtxt} · ${(100*(v.confidence||0)).toFixed(0)}%</span></span>${lf}</div>
+    <div class="atext">${esc(RUN.answer||'(no answer)')}</div>${cites}`;
+}
+
+/* ══════════ replay engine ══════════ */
+function setPlayIcon(){ $('playBtn').innerHTML = replay.playing
+  ? `<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>`
+  : `<svg viewBox="0 0 24 24" fill="currentColor"><polygon points="6 4 20 12 6 20 6 4"/></svg>`; }
+function applyReplay(){
+  const items=document.querySelectorAll('.tl-item');
+  items.forEach((el,i)=> el.classList.toggle('shown', i<replay.i));
+  drawGraph();
+  if(replay.i>0){ const el=items[replay.i-1]; if(el) el.scrollIntoView({block:'nearest',behavior:'smooth'}); }
+}
+function startReplay(){
+  const total=(RUN.steps||[]).length; if(replay.i>=total){ replay.playing=false; setPlayIcon(); return; }
+  replay.playing=true; setPlayIcon();
+  const tick=()=>{
+    if(!replay.playing) return;
+    if(replay.i>=total){ replay.playing=false; setPlayIcon(); applyReplay(); return; }
+    replay.i++; applyReplay();
+    replay.timer=setTimeout(tick, Math.max(160, 620/replay.speed));
+  };
+  replay.timer=setTimeout(tick, Math.max(160, 620/replay.speed));
+}
+function stopReplay(){ replay.playing=false; if(replay.timer){ clearTimeout(replay.timer); replay.timer=null; } setPlayIcon(); }
+function togglePlay(){
+  if(replay.playing){ stopReplay(); return; }
+  if(replay.i>=(RUN.steps||[]).length){ replay.i=0; applyReplay(); }
+  startReplay();
+}
+
+boot();
+</script>
+</body>
+</html>

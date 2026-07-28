@@ -33,5 +33,5 @@ def get_db() -> Generator[Session, None, None]:
 def init_db() -> None:
     """Create all tables. Called once on app startup."""
     # Import models here so SQLAlchemy registers them before create_all
-    from app.models import user, document, job, chat  # noqa: F401
+    from app.models import user, document, job, chat, pipeline_run  # noqa: F401
     Base.metadata.create_all(bind=engine)

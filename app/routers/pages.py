@@ -26,6 +26,11 @@ async def dashboard(request: Request):
     return templates.TemplateResponse(request, "dashboard.html")
 
 
+@router.get("/pipeline", response_class=HTMLResponse)
+async def pipeline_dashboard(request: Request):
+    return templates.TemplateResponse(request, "pipeline.html")
+
+
 @router.get("/chat", response_class=HTMLResponse)
 async def chat(request: Request):
     return templates.TemplateResponse(request, "chat.html")
