@@ -288,6 +288,25 @@
     .modal-close { margin-top:6px; width:100%; padding:9px; background:var(--bg-2); border:1px solid var(--b);
       color:var(--text2); border-radius:var(--r); }
 
+    /* ── Confirm dialog (designed replacement for window.confirm) ──
+       Same component as the dashboard's delete confirm, so both pages match. */
+    .confirm-card { width:400px; max-width:calc(100vw - 32px); text-align:center;
+      padding:28px 26px 22px; animation:cfIn .2s ease; }
+    @keyframes cfIn { from { opacity:0; transform:scale(.96) translateY(6px); } to { opacity:1; transform:none; } }
+    .confirm-ico { width:54px; height:54px; border-radius:15px; margin:0 auto 16px; display:grid; place-items:center;
+      background:rgba(248,113,113,0.12); border:1px solid rgba(248,113,113,0.32); color:#f87171; }
+    .confirm-ico svg { width:26px; height:26px; }
+    .confirm-title { font-size:1.15rem; font-weight:800; letter-spacing:-0.01em; margin-bottom:8px; }
+    .confirm-msg { font-size:0.88rem; color:var(--text2); line-height:1.55; margin-bottom:22px; }
+    .confirm-msg b { color:var(--text); font-weight:600; word-break:break-word; }
+    .confirm-actions { display:flex; gap:10px; }
+    .cf-btn { flex:1; padding:11px 14px; border-radius:10px; font-size:0.9rem; font-weight:600; cursor:pointer; transition:.15s; }
+    .cf-cancel { background:var(--bg-2); color:var(--text); border:1px solid var(--b); }
+    .cf-cancel:hover { border-color:var(--b-hi); background:var(--bg-hover); }
+    .cf-danger { background:linear-gradient(135deg,#e0384e,#f87171); color:#fff; border:none; }
+    .cf-danger:hover { filter:brightness(1.07); box-shadow:0 8px 22px rgba(224,56,78,0.38); }
+    .cf-danger:disabled { opacity:.6; cursor:not-allowed; box-shadow:none; }
+
     .empty { flex:1; display:grid; place-items:center; color:var(--text2); text-align:center; padding:20px; }
     .empty svg { width:40px; height:40px; opacity:.5; margin-bottom:12px; }
 
@@ -348,6 +367,37 @@
       .hb { display:grid; place-items:center; }
       .bubble-wrap { max-width:88%; }
     }
+
+    /* ── chat model picker + stop button + session kebab menu ─────────────────── */
+    .composer-meta { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:8px; }
+    .composer-meta .powered { margin-top:0; flex:1; text-align:right; }
+    .model-picker { display:inline-flex; align-items:center; gap:7px; flex-shrink:0; }
+    .model-picker-label { font-size:10.5px; color:var(--text2); text-transform:uppercase; letter-spacing:.08em; font-weight:600; }
+    #modelSelect { appearance:none; -webkit-appearance:none; background:var(--bg-card); color:var(--text);
+      border:1px solid var(--b); border-radius:8px; padding:5px 26px 5px 10px; font-size:12px; font-weight:600;
+      cursor:pointer; transition:.15s; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236888AA' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+      background-repeat:no-repeat; background-position:right 8px center; }
+    #modelSelect:hover { border-color:var(--b-hi); }
+    #modelSelect:focus { outline:none; border-color:var(--cyan); }
+    /* Send button in STOP mode — clearly interactive while a response streams. */
+    .send.stop { background:var(--bg-card); border:1px solid var(--b-hi); color:var(--cyan); }
+    .send.stop:hover:not(:disabled) { background:var(--cyan-glow); }
+    .stopped-note { font-size:11px; color:var(--text2); margin-top:6px; font-style:italic; }
+
+    /* session row kebab (three-dot) menu */
+    .ss-item-top { position:relative; }
+    .ss-kebab { flex-shrink:0; width:22px; height:22px; border:none; background:none; color:var(--text2);
+      border-radius:6px; display:grid; place-items:center; cursor:pointer; opacity:0; transition:.12s; }
+    .ss-item:hover .ss-kebab, .ss-kebab:focus { opacity:1; }
+    .ss-kebab:hover { background:var(--bg-card); color:var(--cyan); }
+    .ss-menu { position:fixed; z-index:60; min-width:150px; background:var(--bg-card); border:1px solid var(--b-hi);
+      border-radius:10px; padding:5px; box-shadow:0 12px 34px rgba(0,0,0,.34); }
+    .ss-menu[hidden] { display:none; }
+    .ss-menu-item { display:flex; align-items:center; gap:9px; width:100%; padding:8px 10px; border:none; background:none;
+      color:var(--text); font-size:12.5px; border-radius:7px; cursor:pointer; text-align:left; }
+    .ss-menu-item:hover { background:var(--bg-hover); }
+    .ss-menu-item.danger { color:#ff5c6c; }
+    .ss-menu-item.danger:hover { background:rgba(255,92,108,.12); }
   </style>
 </head>
 <body>
@@ -426,10 +476,24 @@
           </button>
         </div>
         <div class="locked-note pf-collapsed" id="lockedNote">This session is locked (read-only). Start a New Chat to continue.</div>
-        <div class="powered">Powered by DocuChunk · <span id="modelName">gemini-3.1-flash-lite</span></div>
+        <div class="composer-meta">
+          <label class="model-picker" id="modelPicker" hidden>
+            <span class="model-picker-label">Model</span>
+            <select id="modelSelect" aria-label="Choose answer model"></select>
+          </label>
+          <div class="powered">Powered by DocuChunk · <span id="modelName">gemini-3.1-flash-lite</span></div>
+        </div>
       </div>
     </div>
   </main>
+
+  <!-- Shared session kebab menu (positioned next to the clicked ⋮). -->
+  <div class="ss-menu" id="ssMenu" hidden>
+    <button class="ss-menu-item danger" id="ssMenuDelete">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+      Delete permanently
+    </button>
+  </div>
 
   <!-- ═══════════ RIGHT: DOCUMENT PREVIEW ═══════════ -->
   <!-- Backdrop shown only when the preview overlays the chat on narrow screens.
@@ -466,6 +530,21 @@
     <p>Select a document to chat with. A fresh session is created.</p>
     <div id="docList"></div>
     <button class="modal-close" id="modalClose">Cancel</button>
+  </div>
+</div>
+
+<!-- Confirm dialog (replaces window.confirm for a designed, on-brand alert) -->
+<div class="overlay" id="confirmOverlay" style="z-index:120">
+  <div class="modal confirm-card" role="alertdialog" aria-modal="true" aria-labelledby="confirmTitle" aria-describedby="confirmMsg">
+    <div class="confirm-ico">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/><path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/></svg>
+    </div>
+    <h3 class="confirm-title" id="confirmTitle">Delete chat?</h3>
+    <p class="confirm-msg" id="confirmMsg"></p>
+    <div class="confirm-actions">
+      <button class="cf-btn cf-cancel" id="confirmCancel" type="button">Cancel</button>
+      <button class="cf-btn cf-danger" id="confirmOk" type="button">Delete</button>
+    </div>
   </div>
 </div>
 
@@ -567,6 +646,12 @@ let SESSIONS = [];           // session summaries (from /api/chat/sessions)
 let activeSessionId = null;
 let activeDetail = null;     // full detail {..., messages:[]} of the active session
 let streaming = false;
+let streamAbort = null;      // AbortController for the in-flight answer (Stop button)
+let MODELS = [];             // available generation tiers from /generate/models
+let selectedModel = null;    // chosen tier key ("gemini" | "offline") or null (server default)
+// The default paper-plane icon for the Send button, restored when not streaming.
+const SEND_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>`;
+const STOP_ICON = `<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>`;
 
 /* ══════════════════════════════════════════════════════════════════════════
    VOICE OUTPUT (Part 1) — browser SpeechSynthesis TTS + animated tutor avatar.
@@ -767,28 +852,97 @@ async function boot(){
     window._me = me;
   } catch(e){ window.location.href='/login'; return; }
 
-  // documents + sessions in parallel
+  // documents + sessions + model tiers in parallel. Each leg swallows its own
+  // failure: the model picker is a NICE-TO-HAVE, and it must never be able to
+  // reject this Promise.all — that would abort the whole boot and leave the user
+  // staring at an empty sidebar with no chat restored.
   const [docs, sessions] = await Promise.all([
-    apiFetch('/docs/list?page_size=100').then(r=>r.ok?r.json():{items:[]}).then(d=>d.items||[]),
-    apiFetch('/api/chat/sessions').then(r=>r.ok?r.json():[]),
+    apiFetch('/docs/list?page_size=100').then(r=>r.ok?r.json():{items:[]}).then(d=>d.items||[]).catch(()=>[]),
+    apiFetch('/api/chat/sessions').then(r=>r.ok?r.json():[]).catch(()=>[]),
+    loadModels().catch(e => console.error('model picker failed to load', e)),
   ]);
   DOCS = docs; SESSIONS = sessions;
   renderSessions();
 
-  // deep-link /chat/{doc_id}: open latest session for that doc, or start one.
+  // deep-link /chat/{doc_id}: open the last real conversation for that doc, or start one.
   const m = location.pathname.match(/^\/chat\/(.+)$/);
   if (m){
     const docId = decodeURIComponent(m[1]);
-    const existing = SESSIONS.find(s => s.doc_id === docId);
+    const forDoc = s => s.doc_id === docId;
+    const existing = lastRealSession(forDoc) || newestSession(forDoc);
     if (existing) await openSession(existing.session_id);
     else if (DOCS.find(d => d.id === docId)) await createSession(docId);
   } else {
-    // Fresh entry to /chat: don't abruptly restore the last session's document
-    // (that PDF load felt like a "break"). Show the welcome state and present the
-    // new-chat document options. Past sessions stay in the sidebar, one click away.
-    renderChat();
-    if (DOCS.some(d => d.status === 'ready')) openNewChatModal();
+    // Fresh entry to /chat (e.g. navigating back from Pipeline/Dashboard): restore
+    // the conversation the user was actually chatting in, so it PERSISTS across
+    // navigation. The saved id is only honoured when that session HAS messages —
+    // a blank session left behind by a stray "New Chat" click must never win over
+    // a real conversation. Otherwise fall back to the most recent real chat, and
+    // only show the welcome + picker when the user has no real chat at all.
+    const last = localStorage.getItem('docuchunk.lastSession');
+    const target = lastRealSession(s => s.session_id === last) || lastRealSession();
+    if (target){
+      await openSession(target.session_id);
+    } else {
+      localStorage.removeItem('docuchunk.lastSession');  // stale/deleted/blank — drop it
+      renderChat();
+      if (DOCS.some(d => d.status === 'ready')) openNewChatModal();
+    }
   }
+}
+
+/* Session pickers used for restore. The server already sorts newest-first, but
+   sort here too so restore never depends on that; "real" means it has at least
+   one message — blank sessions are not something the user was chatting in. */
+function sessionTime(s){ return new Date(s.updated_at || s.created_at || 0).getTime() || 0; }
+function newestSession(pred){
+  return SESSIONS.filter(s => !pred || pred(s))
+                 .sort((a,b) => sessionTime(b) - sessionTime(a))[0] || null;
+}
+function lastRealSession(pred){
+  return newestSession(s => (s.message_count || 0) > 0 && (!pred || pred(s)));
+}
+
+/* ══════════════ model picker ══════════════ */
+// Fetch the available generation tiers and build the picker. Tiers that aren't
+// wired server-side (e.g. "offline" when Ollama is down) simply don't appear, so
+// the user can never pick a model that would silently fall back.
+async function loadModels(){
+  // `data` MUST be declared out here: it is read again below for the default tier.
+  // Scoped inside the try it is not in scope there, and the ReferenceError would
+  // escape loadModels into boot's Promise.all — killing the documents+sessions load
+  // with it, so the sidebar and the restored chat never render.
+  let data = { models: [], default: null };
+  try {
+    data = await apiFetch('/generate/models').then(r=>r.ok?r.json():{models:[],default:null});
+    MODELS = data.models || [];
+  } catch(e){ MODELS = []; }
+
+  const picker = $('modelPicker'), sel = $('modelSelect');
+  if (!MODELS.length){
+    // No registry configured → hide the picker; requests use the server default.
+    picker.hidden = true; selectedModel = null; return;
+  }
+  sel.innerHTML = MODELS.map(m => `<option value="${m.key}">${esc(m.label)}</option>`).join('');
+  picker.hidden = false;
+
+  // Restore a saved choice if it's still available, else the server-suggested default.
+  const saved = localStorage.getItem('docuchunk.model');
+  const keys = MODELS.map(m => m.key);
+  selectedModel = keys.includes(saved) ? saved
+                : (keys.includes(data.default) ? data.default : keys[0]);
+  sel.value = selectedModel;
+  syncModelLabel();
+
+  sel.onchange = () => {
+    selectedModel = sel.value;
+    localStorage.setItem('docuchunk.model', selectedModel);
+    syncModelLabel();
+  };
+}
+function syncModelLabel(){
+  const m = MODELS.find(x => x.key === selectedModel);
+  if (m) $('modelName').textContent = m.model_name;
 }
 
 /* ══════════════ session sidebar ══════════════ */
@@ -807,6 +961,9 @@ function renderSessions(){
           <div class="ss-item-top">
             <div class="ss-item-preview">${esc(s.preview || s.title || 'New conversation')}</div>
             ${s.message_count ? `<span class="ss-lock">${s.message_count} msg${s.message_count===1?'':'s'}</span>` : ''}
+            <button class="ss-kebab" data-sid="${s.session_id}" aria-label="Session options" title="Options">
+              <svg viewBox="0 0 24 24" fill="currentColor" style="width:15px;height:15px"><circle cx="12" cy="5" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="12" cy="19" r="1.6"/></svg>
+            </button>
           </div>
           <div class="ss-item-time">${fmtTime(s.updated_at || s.created_at)}</div>
         </div>`).join('')}
@@ -814,7 +971,100 @@ function renderSessions(){
   $('ssList').innerHTML = html;
   $('ssList').querySelectorAll('.ss-item').forEach(el =>
     el.onclick = () => { openSession(el.dataset.sid); closeDrawer(); });
+  // Kebab (⋮) opens the shared menu; stopPropagation so it doesn't open the session.
+  $('ssList').querySelectorAll('.ss-kebab').forEach(btn =>
+    btn.onclick = (e) => { e.stopPropagation(); openSessionMenu(btn, btn.dataset.sid); });
 }
+
+/* ══════════════ session kebab menu + permanent delete ══════════════ */
+let ssMenuSid = null;
+function openSessionMenu(btn, sid){
+  ssMenuSid = sid;
+  const menu = $('ssMenu');
+  const r = btn.getBoundingClientRect();
+  menu.hidden = false;
+  // Position under the ⋮, kept on-screen (flip left if it would overflow the right).
+  const mw = menu.offsetWidth || 150;
+  let left = r.right - mw;
+  if (left < 8) left = 8;
+  menu.style.top = (r.bottom + 6) + 'px';
+  menu.style.left = left + 'px';
+}
+function closeSessionMenu(){ $('ssMenu').hidden = true; ssMenuSid = null; }
+// Dismiss the menu on any outside click / Escape / scroll.
+document.addEventListener('click', (e) => {
+  if (!$('ssMenu').hidden && !e.target.closest('#ssMenu') && !e.target.closest('.ss-kebab')) closeSessionMenu();
+});
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeSessionMenu(); });
+/* Promise-based confirm dialog — resolves true (confirmed) / false (cancelled).
+   Backdrop click, Cancel and Escape all cancel; Enter confirms. Mirrors the
+   dashboard's dialog so a destructive action looks the same across the app. */
+function confirmDialog({ title = 'Are you sure?', message = '', confirmText = 'Delete' } = {}) {
+  return new Promise(resolve => {
+    const ov = $('confirmOverlay'), ok = $('confirmOk'), cancel = $('confirmCancel');
+    $('confirmTitle').textContent = title;
+    $('confirmMsg').innerHTML = message;
+    ok.textContent = confirmText;
+    function done(val){
+      ov.classList.remove('show');
+      ok.removeEventListener('click', onOk);
+      cancel.removeEventListener('click', onCancel);
+      ov.removeEventListener('click', onBackdrop);
+      document.removeEventListener('keydown', onKey, true);
+      resolve(val);
+    }
+    function onOk(){ done(true); }
+    function onCancel(){ done(false); }
+    function onBackdrop(e){ if (e.target === ov) done(false); }
+    // Capture phase: the page-level Escape handler closes the kebab menu, so this
+    // must see the key first to resolve the dialog rather than leaving it open.
+    function onKey(e){
+      if (e.key === 'Escape'){ e.stopPropagation(); done(false); }
+      else if (e.key === 'Enter'){ e.stopPropagation(); done(true); }
+    }
+    ok.addEventListener('click', onOk);
+    cancel.addEventListener('click', onCancel);
+    ov.addEventListener('click', onBackdrop);
+    document.addEventListener('keydown', onKey, true);
+    ov.classList.add('show');
+    ok.focus();
+  });
+}
+
+$('ssMenuDelete').onclick = async () => {
+  const sid = ssMenuSid;
+  closeSessionMenu();
+  if (!sid) return;
+  const victim = SESSIONS.find(s => s.session_id === sid);
+  const label = victim ? (victim.preview || victim.title || 'this conversation') : 'this conversation';
+  const ok = await confirmDialog({
+    title: 'Delete chat?',
+    message: `This permanently removes <b>${esc(label)}</b> and every message in it. This can’t be undone.`,
+    confirmText: 'Delete',
+  });
+  if (!ok) return;
+  try {
+    const resp = await apiFetch('/api/chat/sessions/' + sid, { method:'DELETE' });
+    if (!resp.ok && resp.status !== 204) throw 0;
+  } catch(e){ toast('Could not delete the chat'); return; }
+  // Drop it locally, then — if it was the open one — fall through to the most
+  // RECENT remaining chat instead of dumping the user on an empty pane.
+  SESSIONS = SESSIONS.filter(s => s.session_id !== sid);
+  if (activeSessionId === sid){
+    const next = SESSIONS.slice().sort((a, b) => sessionTime(b) - sessionTime(a))[0];
+    if (next){
+      await openSession(next.session_id);   // renders the sidebar + chat itself
+    } else {
+      activeSessionId = null; activeDetail = null;
+      try { localStorage.removeItem('docuchunk.lastSession'); } catch(e){}
+      renderChat();
+      renderSessions();
+    }
+  } else {
+    renderSessions();
+  }
+  toast('Chat deleted');
+};
 
 /* ══════════════ render one message ══════════════ */
 function renderContent(text, citations){
@@ -889,6 +1139,7 @@ function messageHTML(msg){
 /* ══════════════ open / render a session ══════════════ */
 async function openSession(sid){
   activeSessionId = sid;
+  try { localStorage.setItem('docuchunk.lastSession', sid); } catch(e){}  // persist across navigation
   renderSessions();
   try { activeDetail = await apiFetch('/api/chat/sessions/'+sid).then(r=>{ if(!r.ok) throw 0; return r.json(); }); }
   catch(e){ activeDetail = null; }
@@ -1045,7 +1296,20 @@ input.addEventListener('input', () => {
   sendBtn.disabled = streaming || !input.value.trim() || blocked;
 });
 input.addEventListener('keydown', e => { if (e.key==='Enter' && !e.shiftKey){ e.preventDefault(); sendMessage(); } });
-sendBtn.onclick = sendMessage;
+// The Send button doubles as Stop while a response streams (ChatGPT-style).
+sendBtn.onclick = () => { if (streaming) stopStreaming(); else sendMessage(); };
+
+// Toggle the Send button between "send" and "stop" states.
+function setSendStop(isStop){
+  const b = $('send');
+  b.classList.toggle('stop', isStop);
+  b.innerHTML = isStop ? STOP_ICON : SEND_ICON;
+  b.setAttribute('aria-label', isStop ? 'Stop generating' : 'Send');
+  // Stop is always clickable; Send follows the usual enabled rules.
+  b.disabled = isStop ? false : (!input.value.trim() || !activeDetail);
+}
+// Abort the in-flight stream; streamAnswer detects the abort and finalizes as stopped.
+function stopStreaming(){ if (streamAbort){ try { streamAbort.abort(); } catch(e){} } }
 
 async function sendMessage(){
   const text = input.value.trim();
@@ -1065,7 +1329,8 @@ async function sendMessage(){
   apiFetch('/api/chat/sessions/'+sid+'/messages', { method:'POST', body:JSON.stringify({ role:'user', content:text }) }).catch(()=>{});
 
   // 2. streaming assistant bubble
-  streaming = true; setComposerEnabled(false, false);
+  streaming = true; setComposerEnabled(false, false); setSendStop(true);
+  streamAbort = new AbortController();
   const row = document.createElement('div');
   row.className='row asst';
   // The tutor avatar starts in THINKING state while tokens stream in.
@@ -1079,16 +1344,25 @@ async function sendMessage(){
     (tok) => { if (tok.text){ fullAnswer += tok.text; textSpan.textContent = fullAnswer; scrollBottom(); }
                if (tok.full_answer) fullAnswer = tok.full_answer; },
     (resp) => finalizeAnswer(sid, row, resp, fullAnswer),
-    (err)  => finalizeError(row, err)
+    (err)  => finalizeError(row, err),
+    ()     => finalizeStopped(sid, row, fullAnswer),
+    streamAbort.signal
   );
 }
 
-/* POST /generate/answer?stream=true and parse the SSE frames (token/verification). */
-async function streamAnswer(query, docId, onToken, onVerify, onError){
+/* POST /generate/answer?stream=true and parse the SSE frames (token/verification).
+   `signal` lets the Stop button abort mid-stream; an abort routes to onStop (not
+   onError) so a user-initiated stop is never shown as a failure. */
+async function streamAnswer(query, docId, onToken, onVerify, onError, onStop, signal){
+  const body = { query, doc_id:docId };
+  if (selectedModel) body.model = selectedModel;   // chat model picker (gemini | offline)
   let resp;
   try {
-    resp = await apiFetch('/generate/answer?stream=true', { method:'POST', body:JSON.stringify({ query, doc_id:docId }) });
-  } catch(e){ onError({ error:'network' }); return; }
+    resp = await apiFetch('/generate/answer?stream=true', { method:'POST', body:JSON.stringify(body), signal });
+  } catch(e){
+    if (signal && signal.aborted) return onStop && onStop();
+    return onError({ error:'network' });
+  }
 
   const ctype = resp.headers.get('content-type') || '';
   if (!resp.ok){
@@ -1103,22 +1377,28 @@ async function streamAnswer(query, docId, onToken, onVerify, onError){
   }
 
   const reader = resp.body.getReader(); const dec = new TextDecoder(); let buf='';
-  while (true){
-    const { value, done } = await reader.read(); if (done) break;
-    buf += dec.decode(value, { stream:true });
-    let i;
-    while ((i = buf.indexOf('\n\n')) >= 0){
-      const frame = buf.slice(0, i); buf = buf.slice(i+2);
-      let ev='message', data='';
-      frame.split('\n').forEach(line => {
-        if (line.startsWith('event:')) ev = line.slice(6).trim();
-        else if (line.startsWith('data:')) data += line.slice(5).trim();
-      });
-      if (!data) continue;
-      let obj; try { obj = JSON.parse(data); } catch(e){ continue; }
-      if (ev === 'token') onToken(obj);
-      else if (ev === 'verification') onVerify(obj);
+  try {
+    while (true){
+      const { value, done } = await reader.read(); if (done) break;
+      buf += dec.decode(value, { stream:true });
+      let i;
+      while ((i = buf.indexOf('\n\n')) >= 0){
+        const frame = buf.slice(0, i); buf = buf.slice(i+2);
+        let ev='message', data='';
+        frame.split('\n').forEach(line => {
+          if (line.startsWith('event:')) ev = line.slice(6).trim();
+          else if (line.startsWith('data:')) data += line.slice(5).trim();
+        });
+        if (!data) continue;
+        let obj; try { obj = JSON.parse(data); } catch(e){ continue; }
+        if (ev === 'token') onToken(obj);
+        else if (ev === 'verification') onVerify(obj);
+      }
     }
+  } catch(e){
+    // A Stop click aborts the reader → finalize as stopped, not as an error.
+    if (signal && signal.aborted) return onStop && onStop();
+    return onError({ error:'network' });
   }
 }
 
@@ -1137,7 +1417,7 @@ function normalizeCitations(resp){
 }
 
 function finalizeAnswer(sid, row, resp, fallbackText){
-  streaming = false;
+  streaming = false; streamAbort = null; setSendStop(false);
   if (resp.error === 'generation_failed' || resp.error === 'generation_not_configured'){
     return finalizeError(row, resp);
   }
@@ -1177,7 +1457,7 @@ function finalizeAnswer(sid, row, resp, fallbackText){
   })}).catch(()=>{}).then(refreshSessionsList);
 }
 function finalizeError(row, err){
-  streaming = false;
+  streaming = false; streamAbort = null; setSendStop(false);
   const detail = err && err.detail ? esc(err.detail)
     : (err && err.error === 'generation_not_configured') ? 'Generation is not configured on the server.'
     : 'The model is temporarily unavailable (this can happen on API rate limits). Please try again.';
@@ -1185,6 +1465,25 @@ function finalizeError(row, err){
     `<div class="bubble abstained"><div class="abstain-note"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg><span>${detail}</span></div></div>`;
   setTutorState(row.querySelector('.tutor'), 'idle');
   setComposerEnabled(true, false); scrollBottom();
+}
+/* User pressed Stop — keep whatever streamed so far, mark it stopped, and persist
+   the partial so it survives a reload (no verification runs on a stopped answer). */
+function finalizeStopped(sid, row, partial){
+  streaming = false; streamAbort = null; setSendStop(false);
+  const text = (partial || '').trim();
+  row.querySelector('.bubble-wrap').innerHTML = text
+    ? `<div class="bubble">${esc(text)}</div><div class="stopped-note">⏹ Stopped by you</div>`
+    : `<div class="bubble abstained"><div class="abstain-note"><span>Response stopped.</span></div></div>`;
+  setTutorState(row.querySelector('.tutor'), 'idle');
+  setComposerEnabled(true, false); scrollBottom();
+  if (text){
+    const msg = { role:'assistant', content:text,
+      citations:{cited_sources:[],dropped_sources:[]}, confidence:0, abstained:false, verified:false };
+    activeDetail.messages.push(msg);
+    apiFetch('/api/chat/sessions/'+sid+'/messages', { method:'POST', body:JSON.stringify({
+      role:'assistant', content:text, citations:msg.citations, confidence:0, verified:false,
+    })}).catch(()=>{}).then(refreshSessionsList);
+  }
 }
 async function refreshSessionsList(){
   try { SESSIONS = await apiFetch('/api/chat/sessions').then(r=>r.ok?r.json():SESSIONS); renderSessions(); } catch(e){}
@@ -1215,6 +1514,7 @@ async function createSession(docId){
     // A new session leaves the others resumable; just refresh the sidebar list.
     SESSIONS = await apiFetch('/api/chat/sessions').then(r=>r.ok?r.json():[]);
     activeSessionId = detail.session_id; activeDetail = detail;
+    try { localStorage.setItem('docuchunk.lastSession', detail.session_id); } catch(e){}
     renderSessions(); renderChat(); loadPreview(detail.doc_id, detail.doc_name);
     input.focus();
   } catch(e){ toast('Could not start chat'); }

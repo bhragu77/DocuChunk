@@ -20,9 +20,11 @@ import logging
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.core.dependencies import get_current_user
+from app.core.timefmt import iso_utc
 from app.database import get_db
 from app.models.chat import ChatMessage, ChatSession, ChatSessionStatus
 from app.models.document import Document
@@ -67,7 +69,7 @@ class MessageOut(BaseModel):
             id=m.id, role=m.role, content=m.content, citations=m.citations,
             confidence=m.confidence, confidence_signals=m.confidence_signals,
             abstained=m.abstained, verified=m.verified,
-            created_at=m.created_at.isoformat() if m.created_at else "",
+            created_at=iso_utc(m.created_at) or "",
         )
 
 
@@ -108,8 +110,8 @@ def _summary(s: ChatSession) -> SessionSummary:
         doc_name=s.doc_name,
         title=s.title,
         status=s.status.value if hasattr(s.status, "value") else str(s.status),
-        created_at=s.created_at.isoformat() if s.created_at else "",
-        updated_at=s.updated_at.isoformat() if s.updated_at else "",
+        created_at=iso_utc(s.created_at) or "",
+        updated_at=iso_utc(s.updated_at) or "",
         message_count=len(s.messages),
         preview=(first_user.content[:120] if first_user else (s.title or "")),
     )
@@ -134,6 +136,25 @@ def create_session(
     # Sessions are no longer auto-locked: a user can keep several conversations
     # going and return to any of them later (see append_message — every owned
     # session stays writable). Creating a new session just adds another one.
+    #
+    # …except an empty one: if the user already has a session for this document
+    # that was never chatted in, hand that back instead of stacking up another
+    # identical blank. Otherwise every "New Chat" click that goes nowhere leaves a
+    # dummy session behind, cluttering the sidebar and competing to be restored.
+    blank = next(
+        (
+            existing
+            for existing in db.query(ChatSession)
+            .filter(ChatSession.user_id == current_user.id, ChatSession.doc_id == doc.id)
+            .order_by(ChatSession.created_at.desc())
+            .all()
+            if not existing.messages
+        ),
+        None,
+    )
+    if blank is not None:
+        return SessionDetail(**_summary(blank).model_dump(), messages=[])
+
     s = ChatSession(
         user_id=current_user.id,
         doc_id=doc.id,
@@ -201,7 +222,13 @@ def append_message(
     # First user turn becomes the sidebar title.
     if payload.role == "user" and not s.title:
         s.title = payload.content[:120]
-    db.add(s)  # bump updated_at
+    # Stamp updated_at explicitly: `onupdate` only fires when the session row is
+    # actually dirty, and from the second turn on nothing on it changes (the title
+    # is already set). Without this the "newest first" ordering degrades into
+    # "most recently created", so a brand-new empty session outranks the
+    # conversation the user has actually been chatting in.
+    s.updated_at = func.now()
+    db.add(s)
     db.commit()
     db.refresh(m)
     return MessageOut.of(m)
