@@ -664,7 +664,15 @@ const STOP_ICON = `<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6
 function splitSentences(text){
   const t = (text || '').trim();
   if (!t) return [];
-  return t.match(/[^.!?\n]+[.!?]+[\])'"`]*\s*|[^.!?\n]+\n*|\S[^.!?\n]*$/g) || [t];
+  // Protect dots INSIDE numbers before splitting. Without this, "firmware version
+  // 4.0.2" splits into "version 4." / "0." / "2." and the reader says
+  // "version four. zero. two." — the document corpus is full of version numbers,
+  // part numbers and prices, so this is the common case, not an edge case.
+  const DOT = '';
+  const protectedText = t.replace(/(\d)\.(?=\d)/g, '$1' + DOT);
+  const parts = protectedText.match(/[^.!?\n]+[.!?]+[\])'"`]*\s*|[^.!?\n]+\n*|\S[^.!?\n]*$/g)
+    || [protectedText];
+  return parts.map(s => s.split(DOT).join('.'));
 }
 // Remove [n] / [1, 2] / [1-3] citation markers so the reader doesn't say
 // "bracket one bracket". Collapses the whitespace the marker leaves behind.
@@ -728,6 +736,7 @@ function pickVoice(){
 /* ── TTS controller — one playback at a time, sentence-by-sentence ───────── */
 const TTS = {
   activeBtn: null,   // the .tts-btn currently playing (null = idle)
+  _keepAlive: null,  // interval countering Chrome's ~15s auto-pause
   spans: [],         // .tts-sentence elements of the playing message
   avatar: null,      // the playing message's tutor avatar element
 
@@ -741,6 +750,17 @@ const TTS = {
 
   speak(btn){
     if (!this.supported()){ toast('Speech is not supported in this browser'); return; }
+    // A browser can expose speechSynthesis and still have NO installed voices (a
+    // common Linux/Chromium state). speak() then does nothing and fires no events,
+    // so the button latches to "playing" and never returns — indistinguishable from
+    // a broken app. Say so instead of pretending to read.
+    if (!_voices.length){
+      _voices = window.speechSynthesis.getVoices() || [];   // late-population retry
+      if (!_voices.length){
+        toast('No speech voices are installed in this browser');
+        return;
+      }
+    }
     this.stop();  // cancel anything already playing
 
     const wrap = btn.closest('.bubble-wrap');
@@ -761,7 +781,7 @@ const TTS = {
 
     const voice = pickVoice();
     const rate = TTS_SETTINGS.rate;
-    queue.forEach((item, qi) => {
+    const utterances = queue.map((item, qi) => {
       const u = new SpeechSynthesisUtterance(item.text);
       if (voice) u.voice = voice;
       u.rate = rate;
@@ -771,8 +791,26 @@ const TTS = {
         this._unhighlight(item.i);
         if (qi === queue.length - 1) this._finish();
       };
-      window.speechSynthesis.speak(u);
+      // Without this the button stays latched "playing" forever on a synth error.
+      u.onerror = () => {
+        this._unhighlight(item.i);
+        if (qi === queue.length - 1) this._finish();
+      };
+      return u;
     });
+
+    // Chrome wedges if speak() lands in the same tick as the cancel() above, and it
+    // silently pauses long utterances after ~15s. One deferred start plus a resume
+    // keepalive covers both; the timer is cleared in _finish so it cannot leak.
+    setTimeout(() => {
+      utterances.forEach(u => window.speechSynthesis.speak(u));
+    }, 60);
+    clearInterval(this._keepAlive);
+    this._keepAlive = setInterval(() => {
+      const s = window.speechSynthesis;
+      if (!s.speaking){ clearInterval(this._keepAlive); this._keepAlive = null; return; }
+      if (s.paused) s.resume();
+    }, 5000);
   },
 
   stop(){
@@ -781,6 +819,7 @@ const TTS = {
   },
 
   _finish(){
+    clearInterval(this._keepAlive); this._keepAlive = null;
     this.spans.forEach(sp => sp.classList.remove('speaking'));
     if (this.activeBtn) this._setBtn(this.activeBtn, false);
     setTutorState(this.avatar, 'idle');
