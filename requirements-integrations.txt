@@ -12,3 +12,5 @@
 # Install:  pip install -r requirements-integrations.txt
 #
 pinecone>=5.0.0                 # managed vector DB backend (VECTOR_BACKEND=pinecone)
+llama-index-core>=0.12.0        # LlamaIndex retriever + QueryEngine interop
+langchain-core>=0.3.0           # LangChain BaseRetriever + LCEL chain
