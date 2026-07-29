@@ -253,3 +253,38 @@ def test_client_exposes_chroma_surface_and_reuses_existing_index():
 def test_client_requires_an_api_key():
     with pytest.raises(ValueError):
         PineconeClient(api_key="", index_name="x", client=FakePC(FakeIndex()))
+
+
+# ── empty-namespace delete (regression: live 404) ────────────────────────────
+
+class MissingNamespaceIndex(FakeIndex):
+    """Reproduces the live behaviour: Pinecone 404s on a namespace never written to."""
+
+    def delete(self, ids=None, filter=None, namespace=None, delete_all=False):
+        if namespace not in self.store:
+            raise RuntimeError("[404] Namespace not found")
+        return super().delete(ids=ids, filter=filter, namespace=namespace,
+                              delete_all=delete_all)
+
+
+def test_deleting_an_empty_namespace_is_a_noop():
+    """Chroma treats deleting from an empty collection as success. The app hits this
+    whenever a user removes their last document, so a 404 here would turn an ordinary
+    delete into a 500."""
+    _coll(MissingNamespaceIndex(), "never_written").delete()
+
+
+def test_delete_collection_on_empty_namespace_is_a_noop():
+    idx = MissingNamespaceIndex()
+    PineconeClient(api_key="k", index_name="docuchunk",
+                   client=FakePC(idx)).delete_collection("never_written")
+
+
+def test_real_delete_errors_are_still_raised():
+    """Only the missing-namespace 404 is swallowed; anything else must surface."""
+    class Broken(FakeIndex):
+        def delete(self, *a, **k):
+            raise RuntimeError("[500] internal error")
+
+    with pytest.raises(RuntimeError):
+        _coll(Broken(), "user_1").delete()

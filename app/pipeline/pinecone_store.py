@@ -134,14 +134,25 @@ class PineconeCollection:
             self._index.upsert(vectors=vectors[i : i + 100], namespace=self.name)
 
     def delete(self, ids: Sequence[str] | None = None, where: dict | None = None) -> None:
-        if ids:
-            self._index.delete(ids=list(ids), namespace=self.name)
-            return
-        flt = translate_filter(where)
-        if flt:
-            self._index.delete(filter=flt, namespace=self.name)
-            return
-        self._index.delete(delete_all=True, namespace=self.name)
+        # Pinecone 404s when the namespace does not exist yet, but Chroma treats
+        # deleting from an empty collection as a no-op. The app hits this whenever a
+        # user removes their last document (or removes one before anything was ever
+        # indexed), so surfacing the 404 would turn an ordinary delete into a 500.
+        # Deleting nothing from nothing is success.
+        try:
+            if ids:
+                self._index.delete(ids=list(ids), namespace=self.name)
+                return
+            flt = translate_filter(where)
+            if flt:
+                self._index.delete(filter=flt, namespace=self.name)
+                return
+            self._index.delete(delete_all=True, namespace=self.name)
+        except Exception as exc:
+            if _is_missing_namespace(exc):
+                logger.debug("pinecone: namespace %s absent, delete is a no-op", self.name)
+                return
+            raise
 
     # ── reads ─────────────────────────────────────────────────────────────────
 
@@ -238,6 +249,16 @@ def _as_dict(obj, key):
     return getattr(obj, key, None)
 
 
+def _is_missing_namespace(exc: Exception) -> bool:
+    """True when Pinecone reports a namespace that was never created.
+
+    Matched on message rather than type so the adapter does not depend on which
+    exception class a given SDK version raises for a 404.
+    """
+    text = str(exc).lower()
+    return "namespace not found" in text or ("404" in text and "namespace" in text)
+
+
 def _matches(res) -> list:
     m = _as_dict(res, "matches")
     return list(m or [])
@@ -300,7 +321,7 @@ class PineconeClient:
         return PineconeCollection(self._index, name)
 
     def delete_collection(self, name: str) -> None:
-        self._index.delete(delete_all=True, namespace=name)
+        PineconeCollection(self._index, name).delete()
 
     def heartbeat(self) -> int:
         self._index.describe_index_stats()

@@ -8,10 +8,10 @@
       "recall_at_k": 0.8667,
       "precision_at_k": 0.28,
       "queries_timed": 45,
-      "p50_ms": 2.2,
-      "p95_ms": 4.4,
-      "mean_ms": 2.5,
-      "total_wall_s": 23.8
+      "p50_ms": 2.1,
+      "p95_ms": 3.4,
+      "mean_ms": 2.3,
+      "total_wall_s": 10.7
     },
     {
       "backend": "pgvector",
@@ -21,12 +21,22 @@
       "precision_at_k": 0.28,
       "queries_timed": 45,
       "p50_ms": 2.2,
-      "p95_ms": 3.7,
+      "p95_ms": 3.9,
       "mean_ms": 2.4,
-      "total_wall_s": 11.0
+      "total_wall_s": 4.8
+    },
+    {
+      "backend": "pinecone",
+      "ops": "managed (serverless)",
+      "mrr": 0.7767,
+      "recall_at_k": 0.8667,
+      "precision_at_k": 0.28,
+      "queries_timed": 45,
+      "p50_ms": 289.6,
+      "p95_ms": 337.6,
+      "mean_ms": 297.9,
+      "total_wall_s": 39.2
     }
   ],
-  "not_measured": {
-    "pinecone": "PINECONE_API_KEY not set"
-  }
+  "not_measured": {}
 }
