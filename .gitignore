@@ -41,3 +41,7 @@ Thumbs.db
 
 # RAGAS cross-check virtualenv (scripts/ragas_crosscheck.py) — not a project dep
 .ragas-venv/
+
+# Local env backups — these contain real API keys
+.env.bak*
+.env.*.bak

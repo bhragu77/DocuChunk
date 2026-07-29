@@ -17,7 +17,10 @@ services:
       - CHROMA_PORT=8000
       # Still set: BM25Index persists per-user pickles under this dir (app/main.py).
       - CHROMA_PERSIST_DIR=/app/chroma_db
-      - DATABASE_URL=sqlite:////app/data/app.db
+      - DATABASE_URL=${DATABASE_URL:-postgresql+psycopg2://docuchunk:docuchunk@postgres:5432/docuchunk}
+      # Vector store: pgvector keeps embeddings in the SAME database as the
+      # relational rows. Set VECTOR_BACKEND=chroma to fall back to Chroma.
+      - VECTOR_BACKEND=${VECTOR_BACKEND:-pgvector}
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       # Chat model picker — the "offline" tier (a local Ollama LLM). Left ENABLED so
@@ -35,8 +38,12 @@ services:
       - chroma_data:/app/chroma_db
       - sqlite_data:/app/data
     depends_on:
-      - redis
-      - chroma
+      redis:
+        condition: service_started
+      chroma:
+        condition: service_started
+      postgres:
+        condition: service_healthy
     restart: unless-stopped
 
   # arq worker — runs the document pipeline in a SEPARATE process from the web app,
@@ -57,7 +64,10 @@ services:
       - CHROMA_HOST=chroma
       - CHROMA_PORT=8000
       - CHROMA_PERSIST_DIR=/app/chroma_db
-      - DATABASE_URL=sqlite:////app/data/app.db
+      - DATABASE_URL=${DATABASE_URL:-postgresql+psycopg2://docuchunk:docuchunk@postgres:5432/docuchunk}
+      # Vector store: pgvector keeps embeddings in the SAME database as the
+      # relational rows. Set VECTOR_BACKEND=chroma to fall back to Chroma.
+      - VECTOR_BACKEND=${VECTOR_BACKEND:-pgvector}
       - REDIS_HOST=redis
       - REDIS_PORT=6379
     volumes:
@@ -65,8 +75,12 @@ services:
       - chroma_data:/app/chroma_db
       - sqlite_data:/app/data
     depends_on:
-      - redis
-      - chroma
+      redis:
+        condition: service_started
+      chroma:
+        condition: service_started
+      postgres:
+        condition: service_healthy
     restart: unless-stopped
 
   # Vector store server — the SINGLE process that owns the Chroma data files. The
@@ -74,6 +88,28 @@ services:
   # to 1.5.9 to match the `chromadb` client version installed in the app image.
   # It mounts the SAME chroma_data volume the app used to open directly, so existing
   # embeddings carry over unchanged (server persist path /data == the volume root).
+  # ── POSTGRES + PGVECTOR ────────────────────────────────────────────────────
+  # Primary datastore: relational rows AND embeddings live here. One database
+  # removes the dual-store consistency problem the Chroma setup had (a document
+  # deleted relationally but still present in the vector index), and it is what a
+  # managed deployment (RDS / Cloud SQL / Neon) actually looks like.
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      - POSTGRES_USER=docuchunk
+      - POSTGRES_PASSWORD=docuchunk
+      - POSTGRES_DB=docuchunk
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      # The app creates the vector extension and schema on startup, but it must not
+      # start before Postgres accepts connections.
+      test: ["CMD-SHELL", "pg_isready -U docuchunk -d docuchunk"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
   chroma:
     image: chromadb/chroma:1.5.9
     command: run --host 0.0.0.0 --port 8000 --path /data
@@ -230,6 +266,7 @@ services:
     restart: unless-stopped
 
 volumes:
+  postgres_data:      # relational rows + pgvector embeddings
   uploads_data:
   chroma_data:
   sqlite_data:

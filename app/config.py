@@ -18,6 +18,11 @@ class Settings(BaseSettings):
 
     # Database
     database_url: str = "sqlite:///./app.db"
+    # Vector backend: "chroma" (default, embedded/http) | "pgvector" (Postgres).
+    # pgvector keeps relational rows and embeddings in ONE database, which removes
+    # the dual-store consistency problem and is the path to a managed deployment.
+    vector_backend: str = "chroma"
+    pgvector_dsn: str = ""          # defaults to DATABASE_URL when empty
 
     # ChromaDB — client mode is a single, explicit config switch. Nothing else in
     # the codebase decides persistent-vs-http; app/core/chroma.build_chroma_client

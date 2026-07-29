@@ -52,6 +52,15 @@ def build_chroma_client() -> "chromadb.ClientAPI":
     the same function against a temp dir.
     """
     s = get_settings()
+
+    # pgvector short-circuits the Chroma modes entirely: the adapter exposes the
+    # same client/collection surface, so nothing downstream changes.
+    if (s.vector_backend or "chroma").lower() == "pgvector":
+        from app.pipeline.pgvector_store import PgVectorClient
+        dsn = s.pgvector_dsn or s.database_url
+        logger.info("Vector backend: pgvector")
+        return PgVectorClient(dsn)
+
     mode = (s.chroma_mode or "").lower()
 
     if mode == "persistent":
