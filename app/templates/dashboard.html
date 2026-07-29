@@ -797,6 +797,31 @@
     .sb-avatar img, .mob-avatar img { width:100%; height:100%; display:block; border-radius:inherit; }
     .sb-avatar, .mob-avatar { overflow:hidden; }
     @media (max-width:520px){ .pf-picker-grid { grid-template-columns:repeat(4,1fr); } }
+
+    /* ── vector-store picker ─────────────────────────────────────────────── */
+    .vbpick { margin:0 0 14px; padding:14px 16px; border:1px solid var(--b);
+              border-radius:12px; background:var(--card); }
+    .vbpick-head { display:flex; align-items:baseline; gap:10px; flex-wrap:wrap;
+                   margin-bottom:10px; }
+    .vbpick-title { font-weight:600; font-size:13px; letter-spacing:.02em; }
+    .vbpick-note { font-size:11.5px; opacity:.6; }
+    .vbpick-opts { display:flex; gap:10px; flex-wrap:wrap; }
+    .vbopt { flex:1 1 220px; display:flex; gap:10px; align-items:flex-start;
+             padding:10px 12px; border:1px solid var(--b); border-radius:10px;
+             cursor:pointer; transition:border-color .15s ease, background .15s ease; }
+    .vbopt:hover { border-color:var(--b-hi); }
+    .vbopt input { margin-top:3px; accent-color:var(--cyan); }
+    .vbopt.sel { border-color:var(--cyan); background:var(--cyan-dim); }
+    .vbopt.disabled { opacity:.45; cursor:not-allowed; }
+    .vbopt-l { font-size:13px; font-weight:600; }
+    .vbopt-h { font-size:11.5px; opacity:.7; margin-top:2px; line-height:1.35; }
+    /* Per-document badge — with a mixed corpus, "where does this live" is
+       otherwise invisible. */
+    .vbadge { display:inline-block; padding:2px 8px; border-radius:999px;
+              font-size:11px; font-weight:600; border:1px solid var(--b-hi); }
+    .vb-pgvector { color:#4ade80; border-color:#4ade8055; background:#4ade8014; }
+    .vb-pinecone { color:#00C8FF; border-color:#00C8FF55; background:#00C8FF14; }
+    .vb-chroma   { color:#f59e0b; border-color:#f59e0b55; background:#f59e0b14; }
   </style>
 </head>
 <body>
@@ -955,6 +980,17 @@
       <div class="stat-num" id="s-proc">—</div>
       <div class="stat-ico">⚙️</div>
     </div>
+  </div>
+
+  <!-- Vector store selector — read BEFORE the file is chosen, because the choice
+       is written to the document row at upload and cannot be changed afterwards
+       without re-embedding. -->
+  <div class="vbpick" id="vbPick">
+    <div class="vbpick-head">
+      <span class="vbpick-title">Vector store</span>
+      <span class="vbpick-note">Chosen per document · cannot be changed after upload</span>
+    </div>
+    <div class="vbpick-opts" id="vbOpts"><!-- filled by loadBackends() --></div>
   </div>
 
   <!-- Upload -->
@@ -1228,6 +1264,7 @@ async function loadDocs() {
             <th>Size</th>
             <th>Pages</th>
             <th>Chunks</th>
+            <th>Vector store</th>
             <th>Status</th>
             <th>Uploaded</th>
             <th></th>
@@ -1245,6 +1282,7 @@ async function loadDocs() {
               <td class="mono">${fmtSize(d.file_size)}</td>
               <td class="mono">${d.page_count ?? '—'}</td>
               <td class="mono">${d.chunk_count ?? '—'}</td>
+              <td><span class="vbadge vb-${d.vector_backend || 'pgvector'}">${vbLabel(d.vector_backend)}</span></td>
               <td>
                 <span class="pill ${pillClass(d.status)}">
                   <span class="pill-dot"></span>${d.status}
@@ -1292,11 +1330,55 @@ zone.addEventListener('drop', e => {
 });
 input.addEventListener('change', () => { if (input.files[0]) uploadFile(input.files[0]); });
 
+/* ── vector store selection ───────────────────────────────────────────────
+   The backend is written to the document row at upload and is immutable after —
+   the vectors physically live in one store, so changing it later would point
+   retrieval at an empty namespace. The picker therefore sits ABOVE the drop zone
+   and the choice is echoed back on every row. */
+let VB_CHOICE = 'pgvector';
+
+function vbLabel(id) {
+  return ({ pgvector: 'pgvector', pinecone: 'Pinecone', chroma: 'Chroma' })[id] || 'pgvector';
+}
+
+async function loadBackends() {
+  const box = document.getElementById('vbOpts');
+  if (!box) return;
+  try {
+    const r = await fetch('/docs/backends', { headers: { 'Authorization': 'Bearer ' + token } });
+    if (!r.ok) throw new Error('unavailable');
+    const data = await r.json();
+    VB_CHOICE = data.default || 'pgvector';
+    box.innerHTML = data.backends.map(b => `
+      <label class="vbopt ${b.id === VB_CHOICE ? 'sel' : ''} ${b.available ? '' : 'disabled'}"
+             data-id="${b.id}">
+        <input type="radio" name="vb" value="${b.id}"
+               ${b.id === VB_CHOICE ? 'checked' : ''} ${b.available ? '' : 'disabled'}/>
+        <span>
+          <span class="vbopt-l">${escapeHtml(b.label)}</span>
+          <span class="vbopt-h">${escapeHtml(b.available ? b.hint : (b.unavailable_reason || 'unavailable'))}</span>
+        </span>
+      </label>`).join('');
+    box.querySelectorAll('.vbopt input').forEach(inp => {
+      inp.addEventListener('change', () => {
+        VB_CHOICE = inp.value;
+        box.querySelectorAll('.vbopt').forEach(o =>
+          o.classList.toggle('sel', o.dataset.id === VB_CHOICE));
+      });
+    });
+  } catch (e) {
+    // A failed probe must not block uploading — fall back to the server default.
+    box.innerHTML = '<span class="vbopt-h">Using the server default vector store.</span>';
+  }
+}
+loadBackends();
+
 async function uploadFile(file) {
   toast(`Uploading ${file.name}`, fmtSize(file.size), 28, '#00C8FF');
 
   const form = new FormData();
   form.append('file', file);
+  form.append('vector_backend', VB_CHOICE);
 
   try {
     const res  = await fetch('/docs/upload', {

@@ -11,6 +11,7 @@
 #
 # Install:  pip install -r requirements-integrations.txt
 #
-pinecone>=5.0.0                 # managed vector DB backend (VECTOR_BACKEND=pinecone)
+# pinecone moved to requirements.txt — it is user-selectable at upload, so a
+# missing package would break ingestion rather than just a benchmark.
 llama-index-core>=0.12.0        # LlamaIndex retriever + QueryEngine interop
 langchain-core>=0.3.0           # LangChain BaseRetriever + LCEL chain

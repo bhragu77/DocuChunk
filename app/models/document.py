@@ -39,6 +39,13 @@ class Document(Base):
     page_count: Mapped[int] = mapped_column(Integer, default=0)
     chunker_config: Mapped[dict | None] = mapped_column(JSON, nullable=True)
 
+    # Which vector store holds THIS document's embeddings. Chosen at upload and
+    # then immutable: the vectors physically live in one backend, so changing this
+    # value without re-indexing would point retrieval at an empty namespace.
+    # Nullable so rows written before per-document routing existed keep working —
+    # they are read as the configured default.
+    vector_backend: Mapped[str | None] = mapped_column(String(32), nullable=True)
+
     # Logical version of the document's content. Copied onto every Chunk at
     # chunk-creation time (see chunker.chunk_document(doc_version=...)) and used by
     # Phase 7 as the vector store's version field for incremental re-indexing.

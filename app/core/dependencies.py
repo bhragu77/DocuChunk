@@ -1,3 +1,5 @@
+import logging
+
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
@@ -5,6 +7,8 @@ import chromadb
 from app.database import get_db
 from app.core.security import verify_access_token
 from app.models.user import User
+
+logger = logging.getLogger(__name__)
 
 bearer_scheme = HTTPBearer(auto_error=False)
 
@@ -79,3 +83,38 @@ def get_arq_pool(request: Request):
     here because that requires an async Redis connection.
     """
     return getattr(request.app.state, "arq_pool", None)
+
+
+def get_read_chroma(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+    default_client=Depends(get_chroma),
+):
+    """Vector client for READS, resolved from what this user's documents actually use.
+
+    With per-document routing a corpus can span backends, so a search across all
+    documents has to ask each one and merge. `build_read_client` returns the single
+    concrete client when only one backend is involved — the common case — and a
+    fan-out only when the corpus is genuinely mixed, so nobody pays for the general
+    case unless they are in it.
+
+    Falls back to the process-wide client if anything goes wrong: a routing failure
+    should degrade to the default store, not break search.
+    """
+    try:
+        from app.core.vector_registry import backends_for_user, default_backend
+        from app.pipeline.multi_backend_store import build_read_client
+
+        backends = backends_for_user(db, current_user.id)
+        # When every document lives on the default backend — the overwhelmingly
+        # common case, and every test case — return the process client untouched.
+        # Resolving through the registry here would build a SECOND client and
+        # silently bypass any injected/overridden one, which is how tests and the
+        # eval harnesses supply a temporary store.
+        if backends == [default_backend()]:
+            return default_client
+        return build_read_client(backends)
+    except Exception:
+        logger.warning("read-client routing failed, using process default", exc_info=True)
+        return default_client

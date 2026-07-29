@@ -323,6 +323,32 @@ def _embed_stage(doc: Document, db, provider, chroma=None, bm25=None) -> Embeddi
     sink = _noop_sink
     if chroma is not None:
         from app.pipeline.vector_store import get_collection, batch_upsert_sink
+
+        # Route to the store THIS document was pinned to at upload. The client
+        # handed in by the worker is the process default; a document that chose a
+        # different backend must not have its vectors written to the default one,
+        # or retrieval would later look for them in the store it was assigned.
+        # Only override the caller's client when this document EXPLICITLY chose a
+        # backend. A NULL means "wherever the caller is writing" — which is what the
+        # eval harnesses and tests rely on when they inject a temporary store. Always
+        # resolving from the registry would silently redirect those writes to the
+        # configured default and leave the injected store empty.
+        chosen = (getattr(doc, "vector_backend", None) or "").strip().lower()
+        if chosen:
+            from app.core.vector_registry import get_client, normalise
+            target = normalise(chosen)
+            try:
+                chroma = get_client(target)
+            except Exception as exc:
+                # Do NOT fall back to the process default. Writing the vectors
+                # elsewhere while documents.vector_backend still says `target` leaves
+                # the database asserting something false: retrieval would look in the
+                # chosen store, find nothing, and the document would appear
+                # ready-but-unsearchable with no error anywhere. Failing the ingestion
+                # is recoverable; a silent lie about where the data lives is not.
+                raise RuntimeError(
+                    f"vector backend '{target}' is unavailable for doc={doc.id}: {exc}"
+                ) from exc
         collection = get_collection(chroma, doc.user_id)
         # BM25 co-write is keyed on the same chunk_id; passing bm25+user_id makes the
         # sink mirror each embedded batch into the user's lexical index in lockstep.

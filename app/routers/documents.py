@@ -2,7 +2,7 @@ import os
 import uuid
 import math
 import logging
-from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Query, Request, UploadFile, status
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, Query, Request, UploadFile, status
 from sqlalchemy.orm import Session
 import chromadb
 
@@ -72,10 +72,44 @@ def _chroma_collection_name(user_id: str) -> str:
 
 # ── Endpoints ─────────────────────────────────────────────────────────────────
 
+def _assign_backend(doc, requested: str | None, db) -> None:
+    """Pin the document to a vector store, rejecting an unusable choice immediately.
+
+    Validated at upload rather than in the worker: an unavailable backend would
+    otherwise surface as a failed ingestion minutes later, with the user watching a
+    progress spinner and no way to tell what went wrong.
+    """
+    from app.core.vector_registry import available_backends, default_backend, normalise
+
+    if not requested:
+        doc.vector_backend = default_backend()
+    else:
+        wanted = normalise(requested)
+        entry = next((b for b in available_backends() if b["id"] == wanted), None)
+        if entry is not None and not entry["available"]:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"vector backend '{wanted}' is not configured: "
+                       f"{entry.get('unavailable_reason') or 'unavailable'}",
+            )
+        doc.vector_backend = wanted
+    db.commit()
+    logger.info("doc=%s pinned to vector backend=%s", doc.id, doc.vector_backend)
+
+
+@router.get("/backends")
+def list_backends(current_user: User = Depends(get_current_user)):
+    """Vector stores this deployment can use, for the upload selector."""
+    from app.core.vector_registry import available_backends, default_backend
+
+    return {"default": default_backend(), "backends": available_backends()}
+
+
 @router.post("/upload", response_model=DocumentResponse, status_code=status.HTTP_201_CREATED)
 async def upload_document(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
+    vector_backend: str | None = Form(None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
     arq_pool=Depends(get_arq_pool),
@@ -142,6 +176,12 @@ async def upload_document(
     db.add(doc)
     db.commit()
     db.refresh(doc)
+
+    # Record the vector store this document will live in. Validated here rather
+    # than at ingestion time: a backend that is unavailable (e.g. Pinecone with no
+    # API key) would otherwise fail in a worker, minutes after upload, with the
+    # user already looking at a "processing" spinner.
+    _assign_backend(doc, vector_backend, db)
 
     # Kick off the parse → chunk → embed pipeline. Only the doc_id crosses the
     # boundary; the worker reconstructs all state from the DB (governing rule).
@@ -275,12 +315,22 @@ def delete_document(
         os.remove(doc.file_path)
         logger.info("Deleted file: %s", doc.file_path)
 
-    # 2. Delete chunk embeddings from ChromaDB (if any were created)
+    # 2. Delete chunk embeddings from the store THIS document lives in.
+    # Deleting via the process default would orphan the vectors whenever the
+    # document was pinned elsewhere — they would survive the delete and keep
+    # surfacing in search results for a document the user believes is gone.
     collection_name = _chroma_collection_name(current_user.id)
     try:
-        collection = chroma.get_collection(name=collection_name)
+        from app.core.vector_registry import get_client, normalise
+        target = normalise(getattr(doc, "vector_backend", None))
+        try:
+            owning = get_client(target)
+        except Exception:
+            logger.warning("backend=%s unreachable for delete, using default", target)
+            owning = chroma
+        collection = owning.get_collection(name=collection_name)
         collection.delete(where={"doc_id": doc_id})
-        logger.info("Deleted ChromaDB chunks for doc=%s", doc_id)
+        logger.info("Deleted %s chunks for doc=%s", target, doc_id)
     except Exception:
         # Collection doesn't exist yet (document never reached embedding phase)
         pass

@@ -10,6 +10,10 @@ class DocumentResponse(BaseModel):
     mime_type: str
     status: DocumentStatus
     chunk_count: int
+    # Which vector store holds this document's embeddings. Surfaced so the UI
+    # can show it per document — with a mixed corpus, 'where does this live'
+    # is otherwise invisible.
+    vector_backend: str | None = None
     page_count: int
     error_message: str | None
     chunker_config: dict | None
