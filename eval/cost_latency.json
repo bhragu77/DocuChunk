@@ -1,0 +1,176 @@
+{
+  "runs": [
+    {
+      "model": "gemini-flash-lite-latest",
+      "provider": "gemini",
+      "total_ms": 22219.0,
+      "input_tokens": 9517,
+      "output_tokens": 1107,
+      "cost_inr": null,
+      "cost_usd": null,
+      "backend": "unrecorded",
+      "multi_hop": false,
+      "status": "ok"
+    },
+    {
+      "model": "gemini-flash-lite-latest",
+      "provider": "gemini",
+      "total_ms": 4114.8,
+      "input_tokens": 2132,
+      "output_tokens": 67,
+      "cost_inr": null,
+      "cost_usd": null,
+      "backend": "unrecorded",
+      "multi_hop": false,
+      "status": "abstained"
+    },
+    {
+      "model": "gemini-flash-lite-latest",
+      "provider": "gemini",
+      "total_ms": 8726.0,
+      "input_tokens": 4412,
+      "output_tokens": 240,
+      "cost_inr": null,
+      "cost_usd": null,
+      "backend": "unrecorded",
+      "multi_hop": false,
+      "status": "ok"
+    },
+    {
+      "model": "gemini-flash-lite-latest",
+      "provider": "default",
+      "total_ms": 13725.1,
+      "input_tokens": 10502,
+      "output_tokens": 529,
+      "cost_inr": null,
+      "cost_usd": null,
+      "backend": "unrecorded",
+      "multi_hop": false,
+      "status": "ok"
+    },
+    {
+      "model": "gemini-flash-lite-latest",
+      "provider": "default",
+      "total_ms": 6721.6,
+      "input_tokens": 6384,
+      "output_tokens": 488,
+      "cost_inr": null,
+      "cost_usd": null,
+      "backend": "unrecorded",
+      "multi_hop": false,
+      "status": "ok"
+    },
+    {
+      "model": "gemini-flash-lite-latest",
+      "provider": "default",
+      "total_ms": 4673.1,
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "cost_inr": null,
+      "cost_usd": null,
+      "backend": "unrecorded",
+      "multi_hop": false,
+      "status": "error"
+    },
+    {
+      "model": "gemini-flash-lite-latest",
+      "provider": "default",
+      "total_ms": 12589.3,
+      "input_tokens": 10070,
+      "output_tokens": 647,
+      "cost_inr": 0.105061,
+      "cost_usd": 0.0012658,
+      "backend": "pgvector",
+      "multi_hop": false,
+      "status": "ok"
+    },
+    {
+      "model": "gemini-flash-lite-latest",
+      "provider": "default",
+      "total_ms": 8020.1,
+      "input_tokens": 6740,
+      "output_tokens": 629,
+      "cost_inr": 0.076825,
+      "cost_usd": 0.0009256,
+      "backend": "pgvector",
+      "multi_hop": false,
+      "status": "ok"
+    },
+    {
+      "model": "gemini-flash-lite-latest",
+      "provider": "default",
+      "total_ms": 17365.9,
+      "input_tokens": 9824,
+      "output_tokens": 606,
+      "cost_inr": 0.101658,
+      "cost_usd": 0.0012248,
+      "backend": "pgvector",
+      "multi_hop": false,
+      "status": "ok"
+    },
+    {
+      "model": "gemini-flash-lite-latest",
+      "provider": "default",
+      "total_ms": 1548.9,
+      "input_tokens": 461,
+      "output_tokens": 52,
+      "cost_inr": 0.005553,
+      "cost_usd": 6.69e-05,
+      "backend": "pgvector",
+      "multi_hop": false,
+      "status": "error"
+    }
+  ],
+  "per_stage_ms": {
+    "router": [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.1,
+      0.0,
+      0.0,
+      0.1,
+      0.0,
+      0.0
+    ],
+    "agent": [
+      1337.9,
+      2601.4,
+      3150.5,
+      1306.2,
+      989.5,
+      215.1,
+      1474.0,
+      857.9,
+      1523.9,
+      1013.8,
+      231.0
+    ],
+    "generate": [
+      4643.4,
+      793.7,
+      1643.8,
+      2587.5,
+      2517.7,
+      203.9,
+      3225.1,
+      3133.6,
+      3126.1,
+      303.6
+    ],
+    "verify": [
+      15531.6,
+      0.8,
+      3122.4,
+      9053.4,
+      2403.9,
+      7120.5,
+      3179.7,
+      12013.0
+    ],
+    "fallback": [
+      4254.0
+    ]
+  }
+}

@@ -70,7 +70,16 @@ class DocuChunkUser(HttpUser):
     wait_time = between(1, 3)
 
     def on_start(self):
-        """Authenticate once per simulated user."""
+        """Authenticate once per simulated user.
+
+        LOADTEST_TOKEN short-circuits the login when supplied. Load testing an
+        existing corpus is more honest than seeding a synthetic one — and minting a
+        token avoids needing a real account password just to measure retrieval.
+        """
+        preset = os.getenv("LOADTEST_TOKEN", "").strip()
+        if preset:
+            self.token = preset
+            return
         resp = self.client.post(
             "/auth/login",
             json={"email": EMAIL, "password": PASSWORD},
