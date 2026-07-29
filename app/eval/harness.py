@@ -347,10 +347,16 @@ def evaluate(collection, eval_set: dict, provider, k: int) -> list[QueryResult]:
 
 
 def run_eval(k: int = 5, eval_set_path: str | Path = DEFAULT_EVAL_SET,
-             persist_dir: str | Path | None = None) -> dict:
+             persist_dir: str | Path | None = None,
+             client_factory=None) -> dict:
     """
     Full harness run in an isolated temp store (never touches the production Chroma
     or DB). Returns the JSON-able report dict. Used by the CLI, the router, and tests.
+
+    `client_factory(workdir) -> vector client` overrides the default temp Chroma so
+    the SAME fixture and ground truth can be scored against a different vector
+    backend (pgvector, Pinecone). That is what makes a backend comparison valid:
+    only the storage layer changes. Default None keeps the historical behaviour.
     """
     import chromadb
 
@@ -365,7 +371,10 @@ def run_eval(k: int = 5, eval_set_path: str | Path = DEFAULT_EVAL_SET,
     Session = sessionmaker(bind=engine)
     from app.models import user, document, job, chunk  # noqa: F401
     Base.metadata.create_all(bind=engine)
-    chroma = chromadb.PersistentClient(path=str(work / "chroma"))
+    chroma = (
+        client_factory(work) if client_factory is not None
+        else chromadb.PersistentClient(path=str(work / "chroma"))
+    )
 
     try:
         collection = ingest(eval_set, Session, chroma, provider, work)

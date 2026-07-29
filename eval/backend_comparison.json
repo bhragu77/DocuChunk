@@ -1,0 +1,32 @@
+{
+  "k": 5,
+  "results": [
+    {
+      "backend": "chroma",
+      "ops": "self-hosted (embedded)",
+      "mrr": 0.7767,
+      "recall_at_k": 0.8667,
+      "precision_at_k": 0.28,
+      "queries_timed": 45,
+      "p50_ms": 2.2,
+      "p95_ms": 4.4,
+      "mean_ms": 2.5,
+      "total_wall_s": 23.8
+    },
+    {
+      "backend": "pgvector",
+      "ops": "self-hosted (Postgres)",
+      "mrr": 0.7767,
+      "recall_at_k": 0.8667,
+      "precision_at_k": 0.28,
+      "queries_timed": 45,
+      "p50_ms": 2.2,
+      "p95_ms": 3.7,
+      "mean_ms": 2.4,
+      "total_wall_s": 11.0
+    }
+  ],
+  "not_measured": {
+    "pinecone": "PINECONE_API_KEY not set"
+  }
+}
