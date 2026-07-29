@@ -26,6 +26,15 @@ class Settings(BaseSettings):
     # Pinecone — the MANAGED backend. Selected with VECTOR_BACKEND=pinecone. One
     # index serves every user; per-user isolation is by namespace, which matters on
     # the free tier where you get exactly one index.
+    # Retrieval enhancements — both OFF by default. Each costs something on the hot
+    # path (an LLM call, or N embeddings per query) and each is expected to help some
+    # query categories while hurting others, so enabling them is a measured decision
+    # per deployment, not a default. See eval/RETRIEVAL_IMPROVEMENTS.md.
+    query_rewrite_enabled: bool = False
+    query_rewrite_n: int = 3
+    mmr_enabled: bool = False
+    mmr_lambda: float = 0.7
+
     pinecone_api_key: str = ""
     pinecone_index: str = "docuchunk"
     pinecone_cloud: str = "aws"
