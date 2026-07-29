@@ -33,6 +33,14 @@ DEFAULT_PRICES: dict[str, dict[str, float]] = {
     "gemini-2.0-flash-lite": {"input": 0.075, "output": 0.30},
     "gemini-1.5-flash": {"input": 0.075, "output": 0.30},
     "gemini-1.5-pro": {"input": 1.25, "output": 5.00},
+    # Rolling "-latest" aliases. These resolve to a concrete model server-side, but
+    # they arrive here as their own name — and an unpriced name silently produced
+    # cost=None, which is how a routine model switch disabled cost attribution
+    # across the whole system without a single error.
+    "gemini-flash-lite-latest": {"input": 0.10, "output": 0.40},
+    "gemini-flash-latest": {"input": 0.30, "output": 2.50},
+    "gemini-2.5-flash": {"input": 0.30, "output": 2.50},
+    "gemini-2.5-flash-lite": {"input": 0.10, "output": 0.40},
     # OpenAI-compatible examples.
     "deepseek-chat": {"input": 0.27, "output": 1.10},
     "gpt-4o-mini": {"input": 0.15, "output": 0.60},
@@ -71,6 +79,40 @@ def usd_to_inr_rate() -> float:
         return DEFAULT_USD_TO_INR
 
 
+_WARNED_UNPRICED: set[str] = set()
+
+
+def resolve_price(model: str) -> Optional[dict[str, float]]:
+    """Price lookup with prefix fallback, warning ONCE per unpriced model.
+
+    Providers ship new and aliased model names constantly. An exact-match-only table
+    returns None for anything unrecognised, and because None is a legitimate value
+    ("not priced") it propagates all the way to the report as a blank cell — which is
+    indistinguishable from "this call was free". That is precisely how cost
+    attribution was lost silently when GEN_MODEL moved to a `-latest` alias.
+
+    The prefix fallback lets `gemini-3.1-flash-lite-preview-09` inherit
+    `gemini-3.1-flash-lite` pricing (approximate, and better than nothing), and the
+    one-time warning makes the gap visible instead of blank.
+    """
+    prices = get_prices()
+    exact = prices.get(model)
+    if exact is not None:
+        return exact
+    # Longest matching prefix wins, so a more specific entry is preferred.
+    candidates = [k for k in prices if model.startswith(k)]
+    if candidates:
+        best = max(candidates, key=len)
+        return prices[best]
+    if model not in _WARNED_UNPRICED:
+        _WARNED_UNPRICED.add(model)
+        logger.warning(
+            "no price entry for model %r — cost will be reported as unknown. "
+            "Add it to DEFAULT_PRICES or TRACE_MODEL_PRICES.", model,
+        )
+    return None
+
+
 def cost_usd(model: Optional[str], input_tokens: Optional[int], output_tokens: Optional[int]) -> Optional[float]:
     """USD cost for a call, or None if the model is unpriced or tokens are missing.
 
@@ -78,7 +120,7 @@ def cost_usd(model: Optional[str], input_tokens: Optional[int], output_tokens: O
     """
     if not model or input_tokens is None or output_tokens is None:
         return None
-    price = get_prices().get(model)
+    price = resolve_price(model)
     if price is None:
         return None
     total = (input_tokens / 1_000_000.0) * price.get("input", 0.0) + (
