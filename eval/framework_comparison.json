@@ -1,0 +1,117 @@
+{
+  "summary": [
+    {
+      "path": "native",
+      "queries": 5,
+      "ok": 5,
+      "errors": 0,
+      "citation_rate": 0.8,
+      "p50_ms": 1801.0,
+      "p95_ms": 2835.0,
+      "avg_answer_chars": 1051
+    },
+    {
+      "path": "llamaindex",
+      "queries": 5,
+      "ok": 5,
+      "errors": 0,
+      "citation_rate": 0.0,
+      "p50_ms": 3075.0,
+      "p95_ms": 3888.0,
+      "avg_answer_chars": 280
+    },
+    {
+      "path": "langchain",
+      "queries": 5,
+      "ok": 5,
+      "errors": 0,
+      "citation_rate": 0.4,
+      "p50_ms": 3390.0,
+      "p95_ms": 3747.0,
+      "avg_answer_chars": 230
+    }
+  ],
+  "runs": {
+    "native": [
+      {
+        "answer": "**Context**\nThe book is a curated collection showcasing over two hundred poorly written Wikipedia articles that the authors have discovered and compiled [2, 3]. \n\n**Detailed Explanation**\nRather than trying to improve or fix these flawed entries, the authors view them as standalone works of art and compare themselves to photographers capturing street art before it gets erased [1, 2]. They gathered these examples through their own web browsing, a podcast they created, and contributions from a dedicated group of readers who submit strange or inept topics [3]. The book features the original Wikipedia text alongside the authors' own commentary, which is presented in italics [2]. While the authors appreciate the earnest effort put into these bizarre or obscure topics\u2014such as serious analyses of 1970s action figures\u2014they approach the content with a sense of humor and deep amusement [1, 3].\n\n**Caveats and Limitations**\nThe authors explicitly state that they have no intention of editing or correcting the passages to make Wikipedia \"better,\" claiming that doing so would be thoroughly miserable work [1]. However, they acknowledge that readers are entirely free to go in and fix the entries themselves if they feel compelled to do so [2]. Additionally, the book notes that all of the Wikipedia material it contains is shared under the Creative Commons-Attribution Share Alike 3.0 license, allowing others to share or adapt the content provided proper attribution and licensing terms are met [4].",
+        "ms": 2835.2285670000583,
+        "chunks": 5
+      },
+      {
+        "answer": "**Context**\nThe book, titled *[Citation Needed]: The Best of Wikipedia\u2019s Worst Writing*, compiles various passages and entries sourced from Wikipedia [5]. \n\n**Detailed Explanation**\nThe authors who wrote and compiled this book are Conor Lastowka and Josh Fruhlinger [5]. They previously ran a blog focused on Wikipedia for two years [1] and later started a podcast to explore further examples of poor writing found on the platform [2]. While they feature and curate these unusual or poorly written entries\u2014ranging from detailed analyses of obscure 1970s action figures to other peculiar topics\u2014they express a deep affection for them, viewing many of the passages as standalone works of art rather than something that needs fixing [1, 2]. \n\n**Caveats and Limitations**\nThe sources do not provide further biographical details about the authors beyond their names, their past Wikipedia-focused blog, and their podcast [1, 2, 5].",
+        "ms": 1801.0229609999442,
+        "chunks": 5
+      },
+      {
+        "answer": "Based on the provided documents, any material in the book derived from Wikipedia is licensed under the Creative Commons-Attribution Share Alike 3.0 license [1, 2, 3].",
+        "ms": 1243.3972429998903,
+        "chunks": 5
+      },
+      {
+        "answer": "**Context and Details**\n\nThe legal fine print regarding the book's sources explains how Wikipedia content is incorporated and outlines the terms under which it can be reused [1, 2, 5]. \n\nAccording to the legal notes, the book features material sourced from Wikipedia, though the text used may not reflect the current state of those live articles [1]. To help readers find the original context, a URL is provided at the bottom of every page that points directly to the source article, and readers can check the article's History tab to see who contributed to it [1]. \n\nRegarding the re-use of this material, the text specifies that content taken from Wikipedia falls under the Creative Commons-Attribution Share Alike 3.0 license [1, 2]. Under this license, users are permitted to share (copy, distribute, and transmit) and remix (adapt) the work, provided they meet specific conditions [2]. Most notably, users must properly attribute the work as requested by the author or licensor, without implying any endorsement [2]. Additionally, anyone reusing or distributing the material must clearly communicate these licensing terms to others, ideally by providing a link to the Creative Commons license page [5].\n\n**Caveats and Limitations**\n\nThe legal notes clarify that the Creative Commons license does not impact several other established legal rights [5]. These unaffected rights include fair use or fair dealing privileges, the author's moral rights, and any separate publicity or privacy rights that either the work itself or individuals might hold [5]. Furthermore, while the book incorporates Wikipedia text, the italicized commentary found underneath each Wikipedia entry is copyrighted separately by Conor Lastowka and Josh Fruhlinger from 2011 [5].",
+        "ms": 2373.8859269999466,
+        "chunks": 5
+      },
+      {
+        "answer": "**Context:** \nWhen readers look through the book *[Citation Needed]* and want to know the origin of a specific featured passage, the publication provides a direct method to trace the material back to its digital roots [1].\n\n**Detailed Explanation:**\nAccording to the legal and structural notes in the book, every single entry includes a specific web address (URL) printed at the bottom of the page [1]. This URL directs readers straight to the original source article on Wikipedia [1]. Additionally, the text notes that if a reader wants to look into who originally contributed to that specific content, they can utilize the \"History\" tab available on that source Wikipedia article [1]. \n\n**Caveats or Limitations:**\nThe authors also note that the specific text featured in their book might not reflect the exact, current version of the live Wikipedia article, as articles on the site are subject to change [1].",
+        "ms": 1793.2018789999802,
+        "chunks": 5
+      }
+    ],
+    "llamaindex": [
+      {
+        "answer": "This book is a collection of over two hundred of the authors' favorite bad Wikipedia articles of all time, accompanied by their own comments in italics.",
+        "ms": 3301.815897000097,
+        "chunks": 5
+      },
+      {
+        "answer": "The authors of this book are Conor Lastowka and Josh Fruhlinger.",
+        "ms": 3074.7163959999853,
+        "chunks": 5
+      },
+      {
+        "answer": "The Wikipedia material is licensed under the Creative Commons-Attribution Share Alike 3.0 license.",
+        "ms": 2555.9697060000417,
+        "chunks": 5
+      },
+      {
+        "answer": "Each entry in the book contains material derived from Wikipedia, though the utilized text might not represent the current version of any given article. Readers can use the URL provided at the bottom of each page to access the source Wikipedia article, where the article's History tab can be consulted to find a list of contributors. \n\nAdditionally, all material taken from Wikipedia is licensed under the Creative Commons-Attribution Share Alike 3.0 license. Under this license, individuals are free to share (copy, distribute, and transmit) and remix (adapt) the work, provided they properly attribute the work as specified by the author or licensor (without implying endorsement) and make the license terms clear to others with a link to the Creative Commons license. Reusing or distributing the work does not affect fair dealing or fair use rights, the author's moral rights, or any other rights persons may have in the work itself or its usage, such as privacy or publicity rights.",
+        "ms": 3887.6867949998086,
+        "chunks": 5
+      },
+      {
+        "answer": "Each entry includes a URL at the bottom of the page that directs readers to the source Wikipedia article.",
+        "ms": 2680.8405729998412,
+        "chunks": 5
+      }
+    ],
+    "langchain": [
+      {
+        "answer": "Based on the provided sources, the book contains over two hundred of the authors' favorite bad Wikipedia articles of all time, which include straight-faced exegeses on forgotten action figures from the seventies and other passages described as works of art or ineptitude [1, 2, 3].",
+        "ms": 3127.730710000151,
+        "chunks": 5
+      },
+      {
+        "answer": "The authors of this book are Conor Lastowka and Josh Fruhlinger [5].",
+        "ms": 3746.698065999908,
+        "chunks": 5
+      },
+      {
+        "answer": "All material in the book taken from Wikipedia is licensed under the Creative Commons-Attribution Share Alike 3.0 license [1, 2, 3].",
+        "ms": 2687.242372000128,
+        "chunks": 5
+      },
+      {
+        "answer": "Based on the provided sources, the legal fine print states the following about the sources:\n\n* Each entry in the book contains material from Wikipedia, though the text used may not represent the current version of any article [1].\n* The URL at the bottom of each page directs you to the source Wikipedia article, and the article\u2019s History tab can be used to find a list of contributors [1, 2].\n* All material taken from Wikipedia is licensed under the Creative Commons-Attribution Share Alike 3.0 license [1, 2].",
+        "ms": 3389.6884709999995,
+        "chunks": 5
+      },
+      {
+        "answer": "The URL at the bottom of each page directs you to the source Wikipedia article, and the article's History tab can be used to find a list of contributors [1, 4].",
+        "ms": 3465.289338000048,
+        "chunks": 5
+      }
+    ]
+  }
+}
