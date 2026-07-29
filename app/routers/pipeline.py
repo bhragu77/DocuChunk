@@ -330,6 +330,11 @@ def _record_run(
         base = None
         if answer_draft is not None:
             s = perf_counter()
+            # Verification runs on its own metered callable, so its calls must be
+            # sliced separately — without this the stage table showed verify as the
+            # second-largest latency cost with "unknown" spend beside it, which
+            # invites the false conclusion that verification is cheap.
+            ver_idx = len(verify_metered.calls)
             with span("verify") as vsp:
                 base = _build_answer_response(
                     query, state.collected, citations, answer_draft, verify_metered,
@@ -343,7 +348,9 @@ def _record_run(
                 "verify", "verify", "Verify groundedness", "ok", vdur,
                 {"grounded": bool(base.grounded), "confidence": round(base.confidence or 0.0, 3),
                  "verified": bool(base.verified), "abstained": bool(base.abstained),
-                 "unsupported_claims": base.unsupported_claims or []},
+                 "unsupported_claims": base.unsupported_claims or [],
+                 "model": verify_model,
+                 "cost": _Metered.totals(verify_metered.calls[ver_idx:])},
             ))
             root.update(abstained=bool(base.abstained), steps=state.steps)
 
@@ -377,6 +384,14 @@ def _record_run(
             "tool_calls": tool_ok,
             "chunks": len(state.collected),
             "multi_hop": tool_ok > 1,
+            # Attribution fields. Latency is meaningless without knowing WHICH
+            # storage layer served it, and cost is meaningless without knowing
+            # whether the answer came from cache — a cached answer costs zero
+            # tokens and would otherwise drag the average down while looking like
+            # a genuine efficiency gain.
+            "vector_backend": (get_settings().vector_backend or "chroma").lower(),
+            "embed_provider": getattr(get_settings(), "embed_provider", "local"),
+            "cache_backend": getattr(get_settings(), "cache_backend", "none"),
         },
         "verdict": verdict,
         "answer": base.answer if base else None,
