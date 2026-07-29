@@ -737,6 +737,8 @@ function pickVoice(){
 const TTS = {
   activeBtn: null,   // the .tts-btn currently playing (null = idle)
   _keepAlive: null,  // interval countering Chrome's ~15s auto-pause
+  _watchdog: null,   // detects Chrome's wedged `speaking===true` state
+  _watchdog2: null,
   spans: [],         // .tts-sentence elements of the playing message
   avatar: null,      // the playing message's tutor avatar element
 
@@ -799,12 +801,37 @@ const TTS = {
       return u;
     });
 
-    // Chrome wedges if speak() lands in the same tick as the cancel() above, and it
-    // silently pauses long utterances after ~15s. One deferred start plus a resume
-    // keepalive covers both; the timer is cleared in _finish so it cannot leak.
-    setTimeout(() => {
-      utterances.forEach(u => window.speechSynthesis.speak(u));
-    }, 60);
+    // Chrome's engine can wedge in `speaking === true` with nothing audible — an
+    // utterance queued while the tab lacked user activation is accepted, never
+    // played, and never fires an event. Everything queued behind it is then silent
+    // forever, which is indistinguishable from a broken button. cancel() alone does
+    // not reliably clear it, so: cancel, start, and if onstart has not fired shortly
+    // after, force a full reset and retry once before reporting honestly.
+    const synth = window.speechSynthesis;
+    let started = false;
+    utterances[0].addEventListener('start', () => { started = true; });
+
+    const fire = () => utterances.forEach(u => synth.speak(u));
+    synth.cancel();
+    setTimeout(fire, 60);
+
+    clearTimeout(this._watchdog);
+    this._watchdog = setTimeout(() => {
+      if (started || !this.activeBtn) return;
+      synth.cancel();
+      synth.resume();               // clears a stuck paused/speaking state
+      setTimeout(() => {
+        if (started) return;
+        fire();
+        clearTimeout(this._watchdog2);
+        this._watchdog2 = setTimeout(() => {
+          if (started || !this.activeBtn) return;
+          synth.cancel();
+          this._finish();
+          toast('Speech engine is unresponsive — reload the page to reset it');
+        }, 1500);
+      }, 250);
+    }, 1200);
     clearInterval(this._keepAlive);
     this._keepAlive = setInterval(() => {
       const s = window.speechSynthesis;
@@ -820,6 +847,8 @@ const TTS = {
 
   _finish(){
     clearInterval(this._keepAlive); this._keepAlive = null;
+    clearTimeout(this._watchdog);  this._watchdog = null;
+    clearTimeout(this._watchdog2); this._watchdog2 = null;
     this.spans.forEach(sp => sp.classList.remove('speaking'));
     if (this.activeBtn) this._setBtn(this.activeBtn, false);
     setTutorState(this.avatar, 'idle');
