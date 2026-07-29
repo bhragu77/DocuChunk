@@ -23,6 +23,13 @@ class Settings(BaseSettings):
     # the dual-store consistency problem and is the path to a managed deployment.
     vector_backend: str = "chroma"
     pgvector_dsn: str = ""          # defaults to DATABASE_URL when empty
+    # Pinecone — the MANAGED backend. Selected with VECTOR_BACKEND=pinecone. One
+    # index serves every user; per-user isolation is by namespace, which matters on
+    # the free tier where you get exactly one index.
+    pinecone_api_key: str = ""
+    pinecone_index: str = "docuchunk"
+    pinecone_cloud: str = "aws"
+    pinecone_region: str = "us-east-1"
 
     # ChromaDB — client mode is a single, explicit config switch. Nothing else in
     # the codebase decides persistent-vs-http; app/core/chroma.build_chroma_client

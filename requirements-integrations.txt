@@ -1,0 +1,14 @@
+# Integration extras — NOT required to run the app.
+#
+# Alternate vector backends and framework interop used for BENCHMARKING. Kept out of
+# requirements.txt for the same reason as requirements-eval.txt: the hermetic CI gate
+# must run with none of these installed, and these packages pull large, fast-moving
+# dependency trees that have already conflicted once in this project (ragas 0.4.3
+# forced langchain-community<0.4).
+#
+# Every import of these is LAZY, inside the function that needs it, so a missing
+# package can never break the running app.
+#
+# Install:  pip install -r requirements-integrations.txt
+#
+pinecone>=5.0.0                 # managed vector DB backend (VECTOR_BACKEND=pinecone)

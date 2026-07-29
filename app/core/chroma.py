@@ -55,9 +55,23 @@ def build_chroma_client() -> "chromadb.ClientAPI":
 
     # pgvector short-circuits the Chroma modes entirely: the adapter exposes the
     # same client/collection surface, so nothing downstream changes.
-    if (s.vector_backend or "chroma").lower() == "pgvector":
+    # getattr, not attribute access: tests and callers may pass a settings stub
+    # that predates this option, and a missing field must mean "chroma", not a crash.
+    backend = (getattr(s, "vector_backend", None) or "chroma").lower()
+
+    if backend == "pinecone":
+        from app.pipeline.pinecone_store import PineconeClient
+        logger.info("Vector backend: pinecone [index=%s]", getattr(s, "pinecone_index", ""))
+        return PineconeClient(
+            api_key=getattr(s, "pinecone_api_key", ""),
+            index_name=getattr(s, "pinecone_index", "docuchunk"),
+            cloud=getattr(s, "pinecone_cloud", "aws"),
+            region=getattr(s, "pinecone_region", "us-east-1"),
+        )
+
+    if backend == "pgvector":
         from app.pipeline.pgvector_store import PgVectorClient
-        dsn = s.pgvector_dsn or s.database_url
+        dsn = getattr(s, "pgvector_dsn", "") or s.database_url
         logger.info("Vector backend: pgvector")
         return PgVectorClient(dsn)
 
