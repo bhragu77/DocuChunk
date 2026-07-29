@@ -32,7 +32,7 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
-from app.core.dependencies import get_current_user, get_chroma
+from app.core.dependencies import get_current_user, get_chroma, get_read_chroma
 from app.database import get_db
 from app.generation.agent import AgentState, agent_events, build_tools
 from app.generation.base import GenerationError
@@ -118,7 +118,7 @@ async def generate_agent_endpoint(
     request: Request,
     stream: bool = True,
     current_user: User = Depends(get_current_user),
-    chroma=Depends(get_chroma),
+    chroma=Depends(get_read_chroma),
     bm25=Depends(_get_bm25),
     embed_fn: Callable = Depends(_get_embed_fn),
     db: Session = Depends(get_db),
