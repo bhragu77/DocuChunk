@@ -38,9 +38,9 @@ cross-encoder reranker (`ms-marco-MiniLM-L-6-v2`) also loads locally on first se
 | Embeddings | `EMBED_PROVIDER=local`, `all-MiniLM-L6-v2` | on the VM (worker + web) |
 | Reranker | `cross-encoder/ms-marco-MiniLM-L-6-v2` | on the VM (web, first search) |
 | Generation | `GEN_PROVIDER=gemini`, `gemini-3.1-flash-lite` | Gemini API |
-| Vector store | Chroma **HTTP server** (`CHROMA_MODE=http`) | `chroma` container |
+| Vector store | **pgvector** (`VECTOR_BACKEND=pgvector`) | `postgres` container |
 | Queue + cache | Redis | `redis` container |
-| Database | SQLite on a volume | `sqlite_data` volume |
+| Database | **Postgres 16** (relational rows AND embeddings) | `postgres_data` volume |
 
 > **First-run downloads (need internet, cached afterward in the `hf_cache` volume):**
 > the MiniLM embedder (~90 MB) and the cross-encoder (~80 MB) are pulled from
@@ -137,11 +137,24 @@ HF_EMBED_MODEL=sentence-transformers/all-MiniLM-L6-v2
 
 # Google OAuth — ONLY if you use it (else leave blank)
 GOOGLE_REDIRECT_URI=https://docuchunk.duckdns.org/auth/oauth/google/callback
+
+# Postgres — REQUIRED in production. The compose default password is a DEV
+# convenience; every container on the network can reach this database, so it must
+# be changed before the host is public. Generate one with:
+#   python3 -c "import secrets; print(secrets.token_urlsafe(24))"
+POSTGRES_PASSWORD=<a long random password>
+DATABASE_URL=postgresql+psycopg2://docuchunk:<same password>@postgres:5432/docuchunk
+VECTOR_BACKEND=pgvector
 ```
 
-> **Do NOT set** `DATABASE_URL`, `CHROMA_MODE/HOST`, `REDIS_HOST`, `UPLOAD_DIR` here —
-> `docker-compose.yml` already wires those (SQLite volume + Chroma HTTP server + Redis).
-> `CACHE_BACKEND=redis` and `APP_ENV=production` are set by `docker-compose.prod.yml`.
+> **Do NOT set** `REDIS_HOST` or `UPLOAD_DIR` here — `docker-compose.yml` wires those.
+> `CACHE_BACKEND=redis` and `APP_ENV=production` come from `docker-compose.prod.yml`.
+>
+> `DATABASE_URL` **must** be set and must carry the same password as
+> `POSTGRES_PASSWORD`, since both the app and Postgres read from this file.
+>
+> Chroma is no longer started by default — pgvector replaces it. It remains available
+> behind a profile (`docker compose --profile chroma up`) for backend comparison.
 
 ---
 

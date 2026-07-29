@@ -40,8 +40,6 @@ services:
     depends_on:
       redis:
         condition: service_started
-      chroma:
-        condition: service_started
       postgres:
         condition: service_healthy
     restart: unless-stopped
@@ -77,8 +75,6 @@ services:
     depends_on:
       redis:
         condition: service_started
-      chroma:
-        condition: service_started
       postgres:
         condition: service_healthy
     restart: unless-stopped
@@ -96,9 +92,11 @@ services:
   postgres:
     image: pgvector/pgvector:pg16
     environment:
-      - POSTGRES_USER=docuchunk
-      - POSTGRES_PASSWORD=docuchunk
-      - POSTGRES_DB=docuchunk
+      - POSTGRES_USER=${POSTGRES_USER:-docuchunk}
+      # Dev default only. Production MUST set POSTGRES_PASSWORD in .env —
+      # this container is reachable from every other container on the network.
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-docuchunk}
+      - POSTGRES_DB=${POSTGRES_DB:-docuchunk}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -110,7 +108,10 @@ services:
       retries: 10
     restart: unless-stopped
 
+  # Only needed when VECTOR_BACKEND=chroma. pgvector is the default, so this
+  # stays down unless explicitly requested:  docker compose --profile chroma up
   chroma:
+    profiles: ["chroma"]
     image: chromadb/chroma:1.5.9
     command: run --host 0.0.0.0 --port 8000 --path /data
     volumes:
